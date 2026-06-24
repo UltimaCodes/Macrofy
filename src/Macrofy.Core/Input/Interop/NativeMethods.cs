@@ -142,6 +142,7 @@ internal static class NativeMethods
     public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const uint KEYEVENTF_KEYUP = 0x0002;
+    public const uint KEYEVENTF_UNICODE = 0x0004;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT
@@ -288,6 +289,28 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern int GetMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+    public const uint PM_REMOVE = 0x0001;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PeekMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern nint LoadLibrary(string lpFileName);
+
+    // Native WH_KEYBOARD hook DLL, shipped beside the exe. It fires after Raw Input (so
+    // the device is known) and asks our decider window — via WM_HOOK — whether to block.
+    public const int WM_HOOK = 0x8101;
+    public const string DeciderWindowClass = "MacrofyDeciderWnd";
+
+    [DllImport("MacrofyHook.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool StartHook();
+
+    [DllImport("MacrofyHook.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool StopHook();
 
     [DllImport("user32.dll")]
     public static extern int TranslateMessage([In] ref MSG lpMsg);
