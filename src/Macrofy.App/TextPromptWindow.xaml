@@ -1,0 +1,28 @@
+<ui:FluentWindow x:Class="Macrofy.App.TextPromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Rename"
+        Width="380" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
+        Background="{StaticResource RmWindowBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="TitleBarControl" Grid.Row="0" Title="Rename" />
+
+        <StackPanel Grid.Row="1" Margin="22,8,22,20">
+            <TextBlock x:Name="PromptText" Margin="0,0,0,8"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="Name" />
+            <ui:TextBox x:Name="InputBox" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <ui:Button Content="Cancel" Click="Cancel_Click" MinWidth="88" />
+                <ui:Button Content="Save" Appearance="Primary" Click="Ok_Click" MinWidth="88" Margin="8,0,0,0" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

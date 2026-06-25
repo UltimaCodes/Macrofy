@@ -21,12 +21,12 @@
                     <ui:SymbolIcon Symbol="Info24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Text="A couple of keys can't be macros" FontSize="16" FontWeight="Bold"
+                <TextBlock Text="Two keys can't be macros" FontSize="16" FontWeight="Bold"
                            VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" />
             </StackPanel>
 
             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                       Text="The Windows keys can't be turned into macros. Windows acts on them before Macrofy ever sees them, so they're shown dimmed on the keyboard and can't be bound. Every other key works normally." />
+                       Text="The left and right Windows keys (the ⊞ Win keys, next to Ctrl and Alt) can't be turned into macros. Windows acts on them before Macrofy ever sees them, so they're shown dimmed on the keyboard and can't be bound. Every other key — including Ctrl, Alt, Shift and the menu key — works normally." />
 
             <ui:CardExpander Margin="0,16,0,0">
                 <ui:CardExpander.Header>

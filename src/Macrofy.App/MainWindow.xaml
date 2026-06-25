@@ -104,6 +104,12 @@
                                 <TextBlock Text="Devices" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </RadioButton>
+                        <RadioButton x:Name="NavSettings" GroupName="Nav" Style="{StaticResource NavItemStyle}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Settings24" FontSize="18" />
+                                <TextBlock Text="Settings" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
                         <RadioButton x:Name="NavAbout" GroupName="Nav" Style="{StaticResource NavItemStyle}">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Symbol="Info24" FontSize="18" />
@@ -160,6 +166,7 @@
                                              SelectedItem="{Binding SelectedKeyboard, Mode=TwoWay}"
                                              ItemContainerStyle="{StaticResource DeviceCardStyle}"
                                              Background="Transparent" BorderThickness="0" MaxHeight="220"
+                                             PreviewMouseLeftButtonDown="DeviceList_PreviewMouseLeftButtonDown"
                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
@@ -220,9 +227,13 @@
                                             </StackPanel>
                                         </StackPanel>
                                         <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
-                                                         Focusable="False"
+                                                         Focusable="False" RenderTransformOrigin="0.5,0.5"
                                                          IsChecked="{Binding IsCapturing, Mode=TwoWay}"
-                                                         IsEnabled="{Binding HasSelection}" Content="Capture" />
+                                                         IsEnabled="{Binding HasSelection}" Content="Capture">
+                                            <ui:ToggleSwitch.RenderTransform>
+                                                <TranslateTransform x:Name="CaptureToggleShake" />
+                                            </ui:ToggleSwitch.RenderTransform>
+                                        </ui:ToggleSwitch>
                                     </Grid>
                                 </ui:Card>
                                 <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVis}}"
@@ -264,8 +275,10 @@
                             <Border Grid.Column="2" Background="{StaticResource RmCardBrush}"
                                     BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1"
                                     CornerRadius="12">
-                                <DockPanel Margin="16,14,16,14">
-                                    <TextBlock DockPanel.Dock="Top" Text="MACROS" FontSize="11" FontWeight="SemiBold"
+                                <ScrollViewer Margin="16,14,16,14" VerticalScrollBarVisibility="Auto"
+                                              local:SmoothScroll.Enabled="True">
+                                  <StackPanel>
+                                    <TextBlock Text="MACROS" FontSize="11" FontWeight="SemiBold"
                                                Margin="0,0,0,10"
                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
 
@@ -291,6 +304,8 @@
                                                      SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                                                      ItemContainerStyle="{StaticResource LayerChipStyle}"
                                                      Background="Transparent" BorderThickness="0"
+                                                     MouseDoubleClick="LayerList_MouseDoubleClick"
+                                                     ToolTip="Double-click a layer to rename it"
                                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                                 <ListBox.ItemsPanel>
                                                     <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
@@ -406,7 +421,6 @@
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                    Visibility="{Binding Bindings.Count, Converter={StaticResource EmptyToVis}}"
                                                    Text="No macros bound yet." />
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                                             <ItemsControl ItemsSource="{Binding Bindings}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
@@ -430,72 +444,148 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                        </ScrollViewer>
                                     </Grid>
-                                </DockPanel>
+                                  </StackPanel>
+                                </ScrollViewer>
                             </Border>
                         </Grid>
                     </Grid>
 
-                    <!-- ABOUT VIEW -->
+                    <!-- SETTINGS VIEW -->
                     <Grid Margin="28,22,28,22" MaxWidth="660" HorizontalAlignment="Left"
-                          Visibility="{Binding IsChecked, ElementName=NavAbout, Converter={StaticResource BoolToVis}}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                          Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BoolToVis}}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" local:SmoothScroll.Enabled="True">
                             <StackPanel>
-                                <TextBlock Text="About" FontSize="26" FontWeight="Bold" Margin="0,0,0,4" />
-                                <TextBlock Margin="0,0,0,14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Text="Macrofy — isolate one keyboard and turn it into a macro pad, while your other keyboards keep working normally. Driver-free." />
+                                <TextBlock Text="Settings" FontSize="26" FontWeight="Bold" Margin="0,0,0,4" />
+                                <TextBlock Margin="0,0,0,18" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Text="Control how Macrofy starts up and what happens when you close it." />
 
                                 <ui:Card Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="How capture works" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                   Text="Raw Input tells Macrofy which physical keyboard each keystroke came from. A global WH_KEYBOARD hook (a small native DLL) fires after Raw Input has already identified the device, so it can block ONLY the captured keyboard's keys and pass every other keyboard through untouched — no re-injection. No kernel driver, nothing installed system-wide, no anti-cheat footprint." />
-                                    </StackPanel>
-                                </ui:Card>
-
-                                <ui:Card Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="Macros" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                   Text="Capture a keyboard, press a key to select it, and bind it to an action — launch an app, open a URL, type text, send a hotkey, send a media/volume key, run a command, or switch layers. Layers let one key (held or toggled) flip the whole keyboard to a different set of macros. Bindings save per device as JSON and run on a background thread, so a slow launch never stalls capture." />
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                            <TextBlock Text="Start with Windows" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Launch Macrofy automatically when you sign in. It starts quietly in the system tray." />
+                                        </StackPanel>
+                                        <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                                         IsChecked="{Binding StartWithWindows, Mode=TwoWay}" />
+                                    </Grid>
                                 </ui:Card>
 
                                 <ui:Card>
-                                    <StackPanel>
-                                        <TextBlock Text="The phases" FontWeight="SemiBold" Margin="0,0,0,10" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                            <TextBlock Text="Keep running when I close the window" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Closing the window keeps Macrofy in the tray so your macros stay active. Turn this off if you'd rather closing the window quit the app." />
+                                        </StackPanel>
+                                        <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                                         IsChecked="{Binding MinimizeToTrayOnClose, Mode=TwoWay}" />
+                                    </Grid>
+                                </ui:Card>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
 
-                                        <StackPanel Margin="0,0,0,12">
-                                            <TextBlock Text="✓ Phase 1 — Detection" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
+                    <!-- ABOUT VIEW -->
+                    <Grid Margin="28,22,28,22" MaxWidth="680" HorizontalAlignment="Left"
+                          Visibility="{Binding IsChecked, ElementName=NavAbout, Converter={StaticResource BoolToVis}}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" local:SmoothScroll.Enabled="True">
+                            <StackPanel>
+                                <!-- Hero -->
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,20">
+                                    <Border Width="60" Height="60" CornerRadius="15" Background="{StaticResource RmAccentBrush}">
+                                        <ui:SymbolIcon Symbol="Keyboard24" FontSize="30" Foreground="#06201C"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Margin="18,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Macrofy" FontSize="30" FontWeight="Bold" />
+                                        <TextBlock Text="Version 0.1  ·  Driver-free macro pad for Windows"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock TextWrapping="Wrap" FontSize="15" Margin="0,0,0,22" LineHeight="22"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Text="Turn a spare keyboard into a programmable macro pad — without touching the keyboards you actually type on. Pick a keyboard, flip it to capture, and every key becomes whatever you need it to be." />
+
+                                <ui:Card Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
+                                                Background="{StaticResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Keyboard24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="One keyboard, fully yours" FontWeight="SemiBold" />
                                             <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                       Text="Enumerate every physical keyboard via Raw Input, group a device's HID collections together by VID/PID, and auto-name each from its HID product string." />
-                                        </StackPanel>
-
-                                        <StackPanel Margin="0,0,0,12">
-                                            <TextBlock Text="✓ Phase 2 — Isolation" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
-                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                       Text="Block the captured keyboard's keys system-wide while leaving all other keyboards native. The in-process WH_KEYBOARD_LL hook turned out to be a dead end — blocking a key destroys the Raw Input needed to know its device — so this uses a global WH_KEYBOARD hook that decides after Raw Input." />
-                                        </StackPanel>
-
-                                        <StackPanel Margin="0,0,0,12">
-                                            <TextBlock Text="✓ Phase 3 — Macros" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
-                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                       Text="Bind each captured key to an action (launch app, open URL, type text, send hotkey, run command), saved as per-device JSON profiles and executed off the input threads." />
-                                        </StackPanel>
-
-                                        <StackPanel>
-                                            <TextBlock Text="• Phase 4 — Polish (in progress)"
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontWeight="SemiBold" />
-                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                                       Text="Done: system tray + run-at-login, layers, and media keys. Still to come: multi-step macros and profile import/export." />
+                                                       Text="Isolate a single keyboard so its keys stop typing and start firing macros — while every other keyboard keeps working normally." />
                                         </StackPanel>
                                     </StackPanel>
                                 </ui:Card>
+
+                                <ui:Card Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
+                                                Background="{StaticResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Flash24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="An action for everything" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Launch apps, open links, type text, fire hotkeys, control media and volume, or run commands — one shot or a whole sequence." />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ui:Card>
+
+                                <ui:Card Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
+                                                Background="{StaticResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Layer24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Layers" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Hold or tap one key to flip the whole keyboard to another set of macros — like a Fn layer, but for anything you want." />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ui:Card>
+
+                                <ui:Card Margin="0,0,0,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
+                                                Background="{StaticResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="ShieldKeyhole24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Driver-free &amp; game-safe" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="No kernel driver and nothing installed system-wide, so it stays invisible to anti-cheat. Built on Windows Raw Input and a lightweight hook." />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ui:Card>
+
+                                <TextBlock Margin="2,16,0,0" FontSize="12"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                           Text="Made for Windows · github.com/UltimaCodes/RapidMacro" />
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>

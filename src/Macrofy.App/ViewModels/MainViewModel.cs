@@ -18,6 +18,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly DeviceNameStore _nameStore = new();
     private readonly MacroEngine _macroEngine = new();
     private readonly MacroProfileStore _profileStore = new();
+    private readonly AppSettings _settings = AppSettings.Load();
     private readonly ConcurrentQueue<DeviceKeyEvent> _pending = new();
     private readonly DispatcherTimer _drainTimer;
 
@@ -76,7 +77,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(HasSelection));
                 RenameText = value?.DisplayName ?? string.Empty;
-                IsCapturing = false; // switching devices always drops capture first
+                // Capture is sticky: it stays on the device you turned it on for until you
+                // toggle it off (the UI also blocks switching devices while capturing).
                 LoadProfileForSelected();
                 OnPropertyChanged(nameof(StatusText));
             }
@@ -349,6 +351,66 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         SelectedLayer = _profile.BaseLayer;
         if (_isCapturing)
             _macroEngine.SetProfile(_profile);
+    }
+
+    public void RenameLayer(MacroLayer layer, string? newName)
+    {
+        if (_profile is null)
+            return;
+        newName = (newName ?? string.Empty).Trim();
+        if (newName.Length == 0 || string.Equals(layer.Name, newName, StringComparison.Ordinal))
+            return;
+        if (_profile.Layers.Any(l => !ReferenceEquals(l, layer)
+                && string.Equals(l.Name, newName, StringComparison.OrdinalIgnoreCase)))
+            return; // name already in use
+
+        string old = layer.Name;
+        layer.Name = newName;
+
+        // Keep any LayerHold/LayerToggle bindings that point at this layer working.
+        foreach (var l in _profile.Layers)
+            foreach (var b in l.Bindings)
+                if (b.Action.Kind is MacroActionKind.LayerHold or MacroActionKind.LayerToggle
+                    && string.Equals(b.Action.Target, old, StringComparison.OrdinalIgnoreCase))
+                    b.Action.Target = newName;
+
+        _profileStore.Save(_profile);
+        ReloadLayersIntoView();
+        if (_isCapturing)
+            _macroEngine.SetProfile(_profile);
+    }
+
+    // MacroLayer has no change notification, so rebuild the chip collection to reflect renames.
+    private void ReloadLayersIntoView()
+    {
+        if (_profile is null)
+            return;
+        var keep = _selectedLayer;
+        Layers.Clear();
+        foreach (var l in _profile.Layers)
+            Layers.Add(l);
+        SelectedLayer = keep is not null && _profile.Layers.Contains(keep) ? keep : Layers.FirstOrDefault();
+    }
+
+    // ---- settings (Settings tab + tray) ----
+
+    public bool StartWithWindows
+    {
+        get => AutoStartManager.IsEnabled;
+        set { AutoStartManager.SetEnabled(value); OnPropertyChanged(); }
+    }
+
+    public bool MinimizeToTrayOnClose
+    {
+        get => _settings.MinimizeToTrayOnClose;
+        set
+        {
+            if (value == _settings.MinimizeToTrayOnClose)
+                return;
+            _settings.MinimizeToTrayOnClose = value;
+            _settings.Save();
+            OnPropertyChanged();
+        }
     }
 
     public void RefreshDevices()

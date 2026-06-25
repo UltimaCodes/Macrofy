@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Macrofy.App.ViewModels;
 using Macrofy.Core.Input;
 using Macrofy.Core.Macros;
@@ -45,18 +47,35 @@ public partial class MainWindow : FluentWindow
 
     private void InitTray()
     {
-        _autoStartItem = new System.Windows.Forms.ToolStripMenuItem("Start with Windows")
-        {
-            CheckOnClick = true,
-            Checked = AutoStartManager.IsEnabled,
-        };
-        _autoStartItem.CheckedChanged += (_, _) => AutoStartManager.SetEnabled(_autoStartItem.Checked);
+        _autoStartItem = new System.Windows.Forms.ToolStripMenuItem("Start with Windows");
+        _autoStartItem.Click += (_, _) => AutoStartManager.SetEnabled(!AutoStartManager.IsEnabled);
 
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Open Macrofy", null, (_, _) => ShowFromTray());
-        menu.Items.Add(_autoStartItem);
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Quit Macrofy", null, (_, _) => ExitApp());
+        var open = new System.Windows.Forms.ToolStripMenuItem("Open Macrofy", null, (_, _) => ShowFromTray())
+        {
+            Font = new System.Drawing.Font("Segoe UI Semibold", 9.5f),
+        };
+        var quit = new System.Windows.Forms.ToolStripMenuItem("Quit Macrofy", null, (_, _) => ExitApp());
+
+        var menu = new System.Windows.Forms.ContextMenuStrip
+        {
+            Renderer = new System.Windows.Forms.ToolStripProfessionalRenderer(new DarkMenuColors()) { RoundedEdges = true },
+            BackColor = DarkMenuColors.Background,
+            ForeColor = DarkMenuColors.Text,
+            Font = new System.Drawing.Font("Segoe UI", 9.5f),
+            Padding = new System.Windows.Forms.Padding(3),
+            ShowImageMargin = true,
+        };
+        menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[]
+        {
+            open, _autoStartItem, new System.Windows.Forms.ToolStripSeparator(), quit,
+        });
+        foreach (System.Windows.Forms.ToolStripItem item in menu.Items)
+        {
+            item.ForeColor = DarkMenuColors.Text;
+            item.Padding = new System.Windows.Forms.Padding(6, 3, 6, 3);
+        }
+        // Reflect the real autostart state each time the menu opens.
+        menu.Opening += (_, _) => _autoStartItem.Checked = AutoStartManager.IsEnabled;
 
         _tray = new System.Windows.Forms.NotifyIcon
         {
@@ -89,10 +108,17 @@ public partial class MainWindow : FluentWindow
         Topmost = false; // nudge to the foreground without staying pinned
     }
 
-    // Closing the window hides to tray instead of quitting; Quit (tray menu) really exits.
+    // Closing the window hides to tray (when that setting is on); otherwise it quits.
+    // Quit from the tray menu always exits.
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!_reallyExit)
+        if (_reallyExit)
+        {
+            base.OnClosing(e);
+            return;
+        }
+
+        if (_viewModel.MinimizeToTrayOnClose)
         {
             e.Cancel = true;
             Hide();
@@ -100,12 +126,15 @@ public partial class MainWindow : FluentWindow
             {
                 OnboardingState.MarkSeen(TrayHintFlag);
                 _tray?.ShowBalloonTip(3000, "Macrofy is still running",
-                    "Macros stay active in the background. Right-click the tray icon to quit.",
+                    "Macros stay active in the background. Right-click the tray icon to quit, or turn this off in Settings.",
                     System.Windows.Forms.ToolTipIcon.Info);
             }
             return;
         }
-        base.OnClosing(e);
+
+        // Tray-on-close is off: a window close should quit the app cleanly.
+        e.Cancel = true;
+        ExitApp();
     }
 
     private void ExitApp()
@@ -220,5 +249,35 @@ public partial class MainWindow : FluentWindow
     {
         if (_viewModel.SelectedLayer is { } layer)
             _viewModel.RemoveLayer(layer);
+    }
+
+    // Double-click a layer chip to rename it.
+    private void LayerList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel.SelectedLayer is not { } layer)
+            return;
+        var dialog = new TextPromptWindow("Rename layer", "Layer name", layer.Name) { Owner = this };
+        if (dialog.ShowDialog() == true)
+            _viewModel.RenameLayer(layer, dialog.Value);
+    }
+
+    // While capturing, the device is locked in. Block clicks on the list and shake the Capture
+    // toggle so it's clear you turn capture off first.
+    private void DeviceList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_viewModel.IsCapturing)
+            return;
+        e.Handled = true;
+        ShakeCaptureToggle();
+    }
+
+    private void ShakeCaptureToggle()
+    {
+        var shake = new DoubleAnimationUsingKeyFrames();
+        double[] offsets = { 0, -6, 6, -4, 4, -2, 0 };
+        for (int i = 0; i < offsets.Length; i++)
+            shake.KeyFrames.Add(new EasingDoubleKeyFrame(offsets[i],
+                KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(i * 45))));
+        CaptureToggleShake.BeginAnimation(TranslateTransform.XProperty, shake);
     }
 }
