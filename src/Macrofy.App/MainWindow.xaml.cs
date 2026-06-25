@@ -152,17 +152,16 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "Assets", "macrofy.ico");
-            if (!File.Exists(path))
+            if (Environment.ProcessPath is not { } exe)
                 return;
-            var bmp = new System.Windows.Media.Imaging.BitmapImage();
-            bmp.BeginInit();
-            bmp.UriSource = new Uri(path);
-            bmp.DecodePixelWidth = 64;
-            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bmp.EndInit();
-            Icon = bmp;
-            AppTitleBar.Icon = new ImageIcon { Source = bmp };
+            using var ico = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+            if (ico is null)
+                return;
+            var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                ico.Handle, System.Windows.Int32Rect.Empty,
+                System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+            Icon = src;
+            AppTitleBar.Icon = new ImageIcon { Source = src };
         }
         catch { /* fall back to the default chrome icon */ }
     }
@@ -265,9 +264,12 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "Assets", "macrofy.ico");
-            if (File.Exists(path))
-                return new System.Drawing.Icon(path, System.Windows.Forms.SystemInformation.SmallIconSize);
+            if (Environment.ProcessPath is { } exe)
+            {
+                var ico = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+                if (ico is not null)
+                    return ico;
+            }
         }
         catch { /* fall back below */ }
         return System.Drawing.SystemIcons.Application;

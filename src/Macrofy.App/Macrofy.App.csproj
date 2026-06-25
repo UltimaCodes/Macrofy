@@ -8,12 +8,9 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Native WH_KEYBOARD hook DLL, shipped beside the exe. Rebuild with native\build.ps1. -->
-    <None Include="..\..\native\MacrofyHook.dll" Link="MacrofyHook.dll" CopyToOutputDirectory="PreserveNewest" />
-    <!-- App icon, also copied to output so the tray can load the crisp small frame at runtime. -->
-    <Content Include="Assets\macrofy.ico" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- The hook DLL is embedded in Macrofy.Core and extracted at runtime, and the tray/title-bar
+       icons are pulled from the exe's own ApplicationIcon, so nothing needs to sit beside the exe.
+       That lets us publish as a single self-contained file. -->
 
   <!-- WinForms is enabled only for its NotifyIcon (system tray). Drop its implicit usings so
        its types don't collide with WPF's (Application, MessageBox, etc.); we fully-qualify the

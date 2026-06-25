@@ -489,3 +489,6 @@ $RECYCLE.BIN/
 
 # scratch proof-of-concept
 /poc/
+
+# build output
+dist/

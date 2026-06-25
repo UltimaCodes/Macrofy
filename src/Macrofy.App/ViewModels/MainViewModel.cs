@@ -853,6 +853,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         BindVk = vk;
         BindKeyName = VirtualKeyNames.Name(vk);
         LoadBindingForEdit(vk);
+        if (_isCapturing)
+            FlashKey(vk);
+    }
+
+    // Briefly light the key on the tester, as if it was pressed, for click feedback.
+    private void FlashKey(int vk)
+    {
+        KeyboardLayout.SetPressed(vk, true);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            KeyboardLayout.SetPressed(vk, false);
+        };
+        timer.Start();
     }
 
     // Pull an existing binding for this key into the form so it can be fixed in place.

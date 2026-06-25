@@ -1,9 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The native hook is embedded so the app can ship as a single self-contained .exe;
+         WhKeyboardBackend extracts it next to %LocalAppData% and loads it at runtime. -->
+    <EmbeddedResource Include="..\..\native\MacrofyHook.dll" LogicalName="MacrofyHook.dll" />
+  </ItemGroup>
 
 </Project>

@@ -128,9 +128,9 @@ public sealed class WhKeyboardBackend : IInputBackend
         };
         RegisterRawInputDevices(rid, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
 
-        // Load the native hook DLL from beside the exe, then install the global hook.
-        string dllPath = Path.Combine(AppContext.BaseDirectory, "MacrofyHook.dll");
-        LoadLibrary(dllPath);
+        // Load the native hook DLL (from beside the exe, or extracted from this assembly when
+        // we're a single-file build), then install the global hook.
+        LoadLibrary(ResolveHookDll());
         IsHookInstalled = StartHook();
 
         _ready.Set();
@@ -156,6 +156,40 @@ public sealed class WhKeyboardBackend : IInputBackend
         IsHookInstalled = false;
         _window = nint.Zero;
         _threadId = 0;
+    }
+
+    // The hook DLL is embedded in this assembly so the app can ship as one file. Prefer a copy
+    // next to the exe if there is one (handy for dev); otherwise extract the embedded copy to
+    // %LocalAppData%\Macrofy and load that.
+    private static string ResolveHookDll()
+    {
+        string beside = Path.Combine(AppContext.BaseDirectory, "MacrofyHook.dll");
+        if (File.Exists(beside))
+            return beside;
+        try
+        {
+            using var stream = typeof(WhKeyboardBackend).Assembly.GetManifestResourceStream("MacrofyHook.dll");
+            if (stream is not null)
+            {
+                string dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Macrofy");
+                Directory.CreateDirectory(dir);
+                string target = Path.Combine(dir, "MacrofyHook.dll");
+                try
+                {
+                    if (!File.Exists(target) || new FileInfo(target).Length != stream.Length)
+                    {
+                        using var file = File.Create(target);
+                        stream.CopyTo(file);
+                    }
+                }
+                catch { /* likely already loaded by us; use whatever is on disk */ }
+                if (File.Exists(target))
+                    return target;
+            }
+        }
+        catch { /* fall through */ }
+        return beside;
     }
 
     private nint WindowProc(nint hWnd, uint msg, nint wParam, nint lParam)
