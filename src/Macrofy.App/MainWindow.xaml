@@ -17,6 +17,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <local:EmptyToVisibilityConverter x:Key="EmptyToVis" />
         <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <local:ActionKindToLabelConverter x:Key="ActionKindLabel" />
 
         <!-- One key on the visual keyboard -->
         <DataTemplate x:Key="KeyCapTemplate">
@@ -34,6 +35,11 @@
                 <DataTrigger Binding="{Binding IsSpacer}" Value="True">
                     <Setter TargetName="cap" Property="Background" Value="Transparent" />
                     <Setter TargetName="cap" Property="BorderThickness" Value="0" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Capturable}" Value="False">
+                    <Setter TargetName="cap" Property="Opacity" Value="0.4" />
+                    <Setter TargetName="cap" Property="ToolTip"
+                            Value="Windows handles this key before Macrofy sees it — it can't be captured or turned into a macro." />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsPressed}" Value="True">
                     <Setter TargetName="cap" Property="Background" Value="{StaticResource RmAccentBrush}" />
@@ -83,14 +89,12 @@
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Macrofy" FontSize="16" FontWeight="Bold" />
-                            <TextBlock Text="macro pad" FontSize="11"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <TextBlock DockPanel.Dock="Bottom" Margin="22,0,0,16" FontSize="11"
                                Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                               Text="Phase 1 + 2 · driver-free" />
+                               Text="v0.1" />
 
                     <StackPanel>
                         <RadioButton x:Name="NavDevices" GroupName="Nav" Style="{StaticResource NavItemStyle}"
@@ -265,34 +269,138 @@
                                                Margin="0,0,0,10"
                                                Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
 
+                                    <!-- LAYERS: pick which layer you're editing; + / – manage them -->
+                                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                                        <Grid Margin="0,0,0,6">
+                                            <TextBlock Text="LAYERS" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                            <Border HorizontalAlignment="Right" CornerRadius="4" Padding="6,1"
+                                                    Background="{StaticResource RmAccentMutedBrush}"
+                                                    Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock FontSize="10" Foreground="{StaticResource RmAccentBrush}"
+                                                           Text="{Binding ActiveLayerName, StringFormat='active: {0}'}" />
+                                            </Border>
+                                        </Grid>
+                                        <DockPanel>
+                                            <ui:Button DockPanel.Dock="Right" Content="–" Padding="10,4" Margin="6,0,0,0"
+                                                       ToolTip="Remove the selected layer"
+                                                       Click="RemoveLayerButton_Click" IsEnabled="{Binding CanRemoveLayer}" />
+                                            <ui:Button DockPanel.Dock="Right" Content="+" Padding="10,4" Margin="6,0,0,0"
+                                                       ToolTip="Add a new layer" Click="AddLayerButton_Click" />
+                                            <ListBox ItemsSource="{Binding Layers}"
+                                                     SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
+                                                     ItemContainerStyle="{StaticResource LayerChipStyle}"
+                                                     Background="Transparent" BorderThickness="0"
+                                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                <ListBox.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                                </ListBox.ItemsPanel>
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Name}" FontSize="12" /></DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </DockPanel>
+                                    </StackPanel>
+
                                     <!-- Add-binding form -->
                                     <Border DockPanel.Dock="Top" CornerRadius="8" Padding="12" Margin="0,0,0,12"
                                             Background="#14FFFFFF">
                                         <StackPanel>
-                                            <TextBlock Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"
-                                                       Text="Press a key on the captured device to pick it, then set its action." />
-                                            <Border Margin="0,8,0,0" CornerRadius="6" Padding="10,6"
+                                            <!-- STEP 1: pick a key -->
+                                            <TextBlock Text="STEP 1 — PICK A KEY" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                            <TextBlock Margin="0,3,0,0" FontSize="12" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Press a key on the captured keyboard — it'll show up below."
+                                                       Visibility="{Binding HasBindKey, Converter={StaticResource InverseBoolToVis}}" />
+                                            <Border Margin="0,6,0,0" CornerRadius="6" Padding="10,6"
                                                     Background="{StaticResource RmAccentBrush}"
                                                     HorizontalAlignment="Left"
                                                     Visibility="{Binding HasBindKey, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Foreground="#06201C" FontWeight="SemiBold"
-                                                           Text="{Binding BindKeyName, StringFormat='Key: {0}'}" />
+                                                           Text="{Binding BindKeyName, StringFormat='Selected key:  {0}'}" />
                                             </Border>
-                                            <ComboBox Margin="0,10,0,0" ItemsSource="{Binding ActionKinds}"
-                                                      SelectedItem="{Binding BindKind, Mode=TwoWay}" />
-                                            <ui:TextBox Margin="0,8,0,0" PlaceholderText="Target (app path / url / text / hotkey / command)"
-                                                        Text="{Binding BindTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <!-- STEP 2: choose what it does -->
+                                            <TextBlock Text="STEP 2 — CHOOSE WHAT IT DOES" FontSize="10" FontWeight="SemiBold"
+                                                       Margin="0,14,0,0"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                            <ComboBox Margin="0,6,0,0" ItemsSource="{Binding ActionKinds}"
+                                                      SelectedItem="{Binding BindKind, Mode=TwoWay}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={StaticResource ActionKindLabel}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
+                                            <!-- STEP 3: the contextual detail for the chosen action -->
+                                            <TextBlock Margin="0,14,0,3" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Text="{Binding BindTargetLabel, StringFormat='STEP 3 — {0}'}" />
+
+                                            <!-- Launch / Open / Run: single line, with Browse for Launch -->
+                                            <Grid Visibility="{Binding IsStandardTarget, Converter={StaticResource BoolToVis}}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <ui:TextBox Grid.Column="0" PlaceholderText="{Binding BindTargetPlaceholder}"
+                                                            Text="{Binding BindTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…"
+                                                           Click="BrowseButton_Click"
+                                                           Visibility="{Binding ShowBrowse, Converter={StaticResource BoolToVis}}" />
+                                            </Grid>
+
+                                            <!-- Type text: multiline -->
+                                            <ui:TextBox AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="120"
+                                                        VerticalScrollBarVisibility="Auto"
+                                                        PlaceholderText="{Binding BindTargetPlaceholder}"
+                                                        Text="{Binding BindTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        Visibility="{Binding IsMultilineTarget, Converter={StaticResource BoolToVis}}" />
+
+                                            <!-- Hotkey: read-only recorder -->
+                                            <ui:TextBox x:Name="HotkeyBox" IsReadOnly="True"
+                                                        PlaceholderText="{Binding BindTargetPlaceholder}"
+                                                        Text="{Binding BindTarget, Mode=OneWay}"
+                                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown" Cursor="Hand"
+                                                        Visibility="{Binding IsHotkeyKind, Converter={StaticResource BoolToVis}}" />
+
+                                            <!-- Media key: dropdown of media / volume actions -->
+                                            <ComboBox Margin="0,8,0,0" ItemsSource="{Binding MediaOptions}"
+                                                      DisplayMemberPath="Label" SelectedValuePath="Token"
+                                                      SelectedValue="{Binding BindTarget, Mode=TwoWay}"
+                                                      Visibility="{Binding IsMediaKind, Converter={StaticResource BoolToVis}}" />
+
+                                            <!-- Layer switch: dropdown of the other layers -->
+                                            <ComboBox Margin="0,8,0,0" ItemsSource="{Binding LayerTargets}"
+                                                      SelectedItem="{Binding BindTarget, Mode=TwoWay}"
+                                                      Visibility="{Binding ShowLayerPicker, Converter={StaticResource BoolToVis}}" />
+                                            <TextBlock Margin="2,8,0,0" FontSize="12" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Add another layer first with the + button above, then bind this key to switch to it."
+                                                       Visibility="{Binding ShowAddLayerHint, Converter={StaticResource BoolToVis}}" />
+
+                                            <!-- Arguments: only meaningful for Launch -->
                                             <ui:TextBox Margin="0,8,0,0" PlaceholderText="Arguments (optional)"
-                                                        Text="{Binding BindArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            <ui:Button Margin="0,10,0,0" HorizontalAlignment="Stretch" Appearance="Primary"
-                                                       Content="Add / update binding" Click="AddBindingButton_Click"
+                                                        Text="{Binding BindArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        Visibility="{Binding ShowArguments, Converter={StaticResource BoolToVis}}" />
+
+                                            <!-- Per-action help line -->
+                                            <TextBlock Margin="2,8,0,0" FontSize="11" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Text="{Binding BindTargetHelp}" />
+
+                                            <ui:Button Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary"
+                                                       Content="Add / update macro" Click="AddBindingButton_Click"
                                                        IsEnabled="{Binding HasBindKey}" />
                                         </StackPanel>
                                     </Border>
 
-                                    <TextBlock DockPanel.Dock="Top" Text="BOUND KEYS" FontSize="11" FontWeight="SemiBold"
+                                    <TextBlock DockPanel.Dock="Top" FontSize="11" FontWeight="SemiBold"
                                                Margin="2,0,0,8"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                               Text="{Binding SelectedLayer.Name, StringFormat='KEYS ON “{0}”', TargetNullValue='BOUND KEYS'}" />
                                     <Grid>
                                         <TextBlock VerticalAlignment="Top" TextWrapping="Wrap" Margin="2,2,0,0"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
@@ -310,7 +418,7 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0">
                                                                     <TextBlock Text="{Binding KeyName}" FontWeight="SemiBold" />
-                                                                    <TextBlock Text="{Binding Action.Description}" FontSize="11" Margin="0,2,0,0"
+                                                                    <TextBlock Text="{Binding Description}" FontSize="11" Margin="0,2,0,0"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                                 </StackPanel>
@@ -350,7 +458,7 @@
                                     <StackPanel>
                                         <TextBlock Text="Macros" FontWeight="SemiBold" Margin="0,0,0,6" />
                                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                   Text="Capture a keyboard, press a key to select it, and bind it to an action — launch an app, open a URL, type text, send a hotkey, or run a command. Bindings save per device as JSON and run on a background thread, so a slow launch never stalls capture." />
+                                                   Text="Capture a keyboard, press a key to select it, and bind it to an action — launch an app, open a URL, type text, send a hotkey, send a media/volume key, run a command, or switch layers. Layers let one key (held or toggled) flip the whole keyboard to a different set of macros. Bindings save per device as JSON and run on a background thread, so a slow launch never stalls capture." />
                                     </StackPanel>
                                 </ui:Card>
 
@@ -380,11 +488,11 @@
                                         </StackPanel>
 
                                         <StackPanel>
-                                            <TextBlock Text="• Phase 4 — Polish (next)"
+                                            <TextBlock Text="• Phase 4 — Polish (in progress)"
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontWeight="SemiBold" />
                                             <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                                       Text="System tray + autostart, multi-step macros, and profile import/export." />
+                                                       Text="Done: system tray + run-at-login, layers, and media keys. Still to come: multi-step macros and profile import/export." />
                                         </StackPanel>
                                     </StackPanel>
                                 </ui:Card>

@@ -26,12 +26,26 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<KeyboardDevice> Keyboards { get; } = new();
     public ObservableCollection<KeyLogEntry> KeyLog { get; } = new();
     public ObservableCollection<MacroBinding> Bindings { get; } = new();
+    public ObservableCollection<MacroLayer> Layers { get; } = new();
+    public ObservableCollection<string> LayerTargets { get; } = new();
     public KeyboardLayoutViewModel KeyboardLayout { get; } = new();
 
     public MacroActionKind[] ActionKinds { get; } =
     {
         MacroActionKind.LaunchApp, MacroActionKind.OpenUrl, MacroActionKind.TypeText,
-        MacroActionKind.SendHotkey, MacroActionKind.RunCommand,
+        MacroActionKind.SendHotkey, MacroActionKind.RunCommand, MacroActionKind.MediaKey,
+        MacroActionKind.LayerHold, MacroActionKind.LayerToggle,
+    };
+
+    public MediaKeyOption[] MediaOptions { get; } =
+    {
+        new("Play / Pause", "PlayPause"),
+        new("Next track", "Next"),
+        new("Previous track", "Prev"),
+        new("Stop", "Stop"),
+        new("Volume up", "VolumeUp"),
+        new("Volume down", "VolumeDown"),
+        new("Mute", "Mute"),
     };
 
     public MainViewModel(IInputBackend backend)
@@ -39,6 +53,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _backend = backend;
         _backend.CapturedKey += OnCapturedKey;
         _backend.Start();
+
+        _macroEngine.ActiveLayerChanged += OnActiveLayerChanged;
 
         _drainTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -76,6 +92,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _renameText, value);
     }
 
+    // Raised the first moment capture is turned on, so the window can show the one-time
+    // "some keys can't be macro'd" hint at a point where it's actually relevant.
+    public event EventHandler? CaptureEngaged;
+
     private bool _isCapturing;
     public bool IsCapturing
     {
@@ -85,7 +105,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isCapturing, value))
             {
                 ApplyCapture();
-                if (!value)
+                if (value)
+                    CaptureEngaged?.Invoke(this, EventArgs.Empty);
+                else
                     KeyboardLayout.Reset();
                 OnPropertyChanged(nameof(StatusText));
             }
@@ -105,9 +127,46 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string StatusText => _selectedKeyboard is null
         ? "No keyboard selected."
-        : _isCapturing
-            ? $"Capturing \"{_selectedKeyboard.DisplayName}\" — its keys are isolated and run your macros instead of typing."
-            : $"\"{_selectedKeyboard.DisplayName}\" is passing through normally. Toggle capture to take it over.";
+        : _isCapturing && _captureSuspended
+            ? "Capture paused while you type — it resumes automatically when you click out of the text box."
+            : _isCapturing
+                ? $"Capturing \"{_selectedKeyboard.DisplayName}\" — its keys are isolated and run your macros instead of typing."
+                : $"\"{_selectedKeyboard.DisplayName}\" is passing through normally. Toggle capture to take it over.";
+
+    // While a text field is focused we pause the actual blocking (so the captured keyboard can
+    // type into it) without flipping IsCapturing — the toggle stays "on" and we resume on blur.
+    private bool _captureSuspended;
+    public void SetCaptureSuspended(bool suspend)
+    {
+        if (suspend == _captureSuspended)
+            return;
+        _captureSuspended = suspend;
+        if (suspend)
+            KeyboardLayout.Reset(); // don't leave a key lit while blocking is paused
+        ApplyCapture();
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    private string _activeLayerName = "Base";
+    public string ActiveLayerName
+    {
+        get => _activeLayerName;
+        private set => SetProperty(ref _activeLayerName, value);
+    }
+
+    // The engine raises this from the decider thread when a LayerHold/Toggle fires; hop to the
+    // UI thread BEFORE touching the Layers collection (it isn't safe to read off-thread).
+    private void OnActiveLayerChanged(object? sender, int index)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            UpdateActiveLayerName(index);
+        else
+            dispatcher.BeginInvoke(() => UpdateActiveLayerName(index));
+    }
+
+    private void UpdateActiveLayerName(int index)
+        => ActiveLayerName = index >= 0 && index < Layers.Count ? Layers[index].Name : "Base";
 
     // ---- binding editor state ----
 
@@ -131,8 +190,81 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public MacroActionKind BindKind
     {
         get => _bindKind;
-        set => SetProperty(ref _bindKind, value);
+        set
+        {
+            if (SetProperty(ref _bindKind, value))
+            {
+                // Each action means something different, so start its field fresh and
+                // refresh all the per-action labels/visibility the form binds to.
+                BindTarget = string.Empty;
+                BindArgs = string.Empty;
+                OnPropertyChanged(nameof(BindTargetLabel));
+                OnPropertyChanged(nameof(BindTargetPlaceholder));
+                OnPropertyChanged(nameof(BindTargetHelp));
+                OnPropertyChanged(nameof(ShowArguments));
+                OnPropertyChanged(nameof(ShowBrowse));
+                OnPropertyChanged(nameof(IsHotkeyKind));
+                OnPropertyChanged(nameof(IsMultilineTarget));
+                OnPropertyChanged(nameof(IsStandardTarget));
+                OnPropertyChanged(nameof(IsMediaKind));
+                OnPropertyChanged(nameof(IsLayerKind));
+                OnPropertyChanged(nameof(ShowLayerPicker));
+                OnPropertyChanged(nameof(ShowAddLayerHint));
+            }
+        }
     }
+
+    // ---- per-action presentation (drives the contextual binding form) ----
+
+    public string BindTargetLabel => _bindKind switch
+    {
+        MacroActionKind.LaunchApp => "Application to launch",
+        MacroActionKind.OpenUrl => "Website address",
+        MacroActionKind.TypeText => "Text to type out",
+        MacroActionKind.SendHotkey => "Hotkey to send",
+        MacroActionKind.RunCommand => "Command to run",
+        MacroActionKind.MediaKey => "Media key",
+        MacroActionKind.LayerHold => "Layer to hold",
+        MacroActionKind.LayerToggle => "Layer to toggle",
+        _ => "Target",
+    };
+
+    public string BindTargetPlaceholder => _bindKind switch
+    {
+        MacroActionKind.LaunchApp => "Click Browse… or paste the path to a program",
+        MacroActionKind.OpenUrl => "https://example.com",
+        MacroActionKind.TypeText => "What should this key type for you?",
+        MacroActionKind.SendHotkey => "Click here, then press the keys (e.g. Ctrl+C)",
+        MacroActionKind.RunCommand => "e.g. shutdown /s /t 0",
+        _ => string.Empty,
+    };
+
+    public string BindTargetHelp => _bindKind switch
+    {
+        MacroActionKind.LaunchApp => "Opens a program. Use Browse… to pick an app, or paste a path. Arguments are optional.",
+        MacroActionKind.OpenUrl => "Opens this link in your default browser.",
+        MacroActionKind.TypeText => "Types this text wherever your cursor is — great for emails, snippets or sign-offs.",
+        MacroActionKind.SendHotkey => "Sends a shortcut to the app you're using. Recognizes letters, digits, F-keys and common keys.",
+        MacroActionKind.RunCommand => "Runs a command line (via cmd). For advanced use.",
+        MacroActionKind.MediaKey => "Sends a media or volume key to Windows — works with most players.",
+        MacroActionKind.LayerHold => "While this key is held, the keyboard switches to the chosen layer; releasing it returns you.",
+        MacroActionKind.LayerToggle => "Tap to switch the keyboard to the chosen layer; tap again to return to Base.",
+        _ => string.Empty,
+    };
+
+    public bool ShowArguments => _bindKind == MacroActionKind.LaunchApp;
+    public bool ShowBrowse => _bindKind == MacroActionKind.LaunchApp;
+    public bool IsHotkeyKind => _bindKind == MacroActionKind.SendHotkey;
+    public bool IsMultilineTarget => _bindKind == MacroActionKind.TypeText;
+    public bool IsMediaKind => _bindKind == MacroActionKind.MediaKey;
+    public bool IsLayerKind => _bindKind is MacroActionKind.LayerHold or MacroActionKind.LayerToggle;
+    public bool IsStandardTarget =>
+        _bindKind is MacroActionKind.LaunchApp or MacroActionKind.OpenUrl or MacroActionKind.RunCommand;
+
+    // Layer kinds pick their target from a dropdown of the OTHER layers; if there aren't any
+    // yet, show a nudge to create one instead of an empty combo.
+    public bool ShowLayerPicker => IsLayerKind && LayerTargets.Count > 0;
+    public bool ShowAddLayerHint => IsLayerKind && LayerTargets.Count == 0;
 
     private string _bindTarget = string.Empty;
     public string BindTarget
@@ -146,6 +278,77 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         get => _bindArgs;
         set => SetProperty(ref _bindArgs, value);
+    }
+
+    // ---- layers ----
+
+    private MacroLayer? _selectedLayer;
+    public MacroLayer? SelectedLayer
+    {
+        get => _selectedLayer;
+        set
+        {
+            if (SetProperty(ref _selectedLayer, value))
+            {
+                RefreshBindingsForLayer();
+                RefreshLayerTargets();
+                OnPropertyChanged(nameof(CanRemoveLayer));
+            }
+        }
+    }
+
+    public bool CanRemoveLayer =>
+        _profile is not null && _selectedLayer is not null
+        && _profile.Layers.Count > 1 && !ReferenceEquals(_selectedLayer, _profile.BaseLayer);
+
+    private void RefreshBindingsForLayer()
+    {
+        Bindings.Clear();
+        if (_selectedLayer is null)
+            return;
+        foreach (var b in _selectedLayer.Bindings)
+            Bindings.Add(b);
+    }
+
+    private void RefreshLayerTargets()
+    {
+        LayerTargets.Clear();
+        if (_profile is not null && _selectedLayer is not null)
+            foreach (var l in _profile.Layers)
+                if (!ReferenceEquals(l, _selectedLayer))
+                    LayerTargets.Add(l.Name);
+        OnPropertyChanged(nameof(ShowLayerPicker));
+        OnPropertyChanged(nameof(ShowAddLayerHint));
+    }
+
+    public void AddLayer()
+    {
+        if (_profile is null)
+            return;
+        int n = _profile.Layers.Count + 1;
+        string name;
+        do { name = $"Layer {n}"; n++; }
+        while (_profile.Layers.Any(l => string.Equals(l.Name, name, StringComparison.OrdinalIgnoreCase)));
+
+        var layer = new MacroLayer { Name = name };
+        _profile.Layers.Add(layer);
+        Layers.Add(layer);
+        _profileStore.Save(_profile);
+        SelectedLayer = layer;
+        if (_isCapturing)
+            _macroEngine.SetProfile(_profile);
+    }
+
+    public void RemoveLayer(MacroLayer layer)
+    {
+        if (_profile is null || _profile.Layers.Count <= 1 || ReferenceEquals(layer, _profile.BaseLayer))
+            return;
+        _profile.Layers.Remove(layer);
+        Layers.Remove(layer);
+        _profileStore.Save(_profile);
+        SelectedLayer = _profile.BaseLayer;
+        if (_isCapturing)
+            _macroEngine.SetProfile(_profile);
     }
 
     public void RefreshDevices()
@@ -172,41 +375,49 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void LoadProfileForSelected()
     {
+        Layers.Clear();
         Bindings.Clear();
+        LayerTargets.Clear();
         if (_selectedKeyboard is null)
         {
             _profile = null;
+            SelectedLayer = null;
             return;
         }
         _profile = _profileStore.Load(_selectedKeyboard.Id, _selectedKeyboard.DisplayName);
-        foreach (var b in _profile.Bindings)
-            Bindings.Add(b);
+        foreach (var l in _profile.Layers)
+            Layers.Add(l);
+        SelectedLayer = Layers.FirstOrDefault(); // Base; refreshes Bindings + LayerTargets
     }
 
     private void ApplyCapture()
     {
-        if (_isCapturing && _selectedKeyboard is not null)
+        if (_isCapturing && !_captureSuspended && _selectedKeyboard is not null && _profile is not null)
         {
             _backend.SetCapturedDevices(_selectedKeyboard.DevicePaths);
-            _macroEngine.SetBindings(_profile?.Bindings ?? Enumerable.Empty<MacroBinding>());
+            _macroEngine.SetProfile(_profile);
         }
         else
         {
+            // Stop blocking the device. Only tear down the engine when capture is truly off —
+            // a temporary suspend (still capturing) keeps the profile so resume is instant.
             _backend.SetCapturedDevices(Array.Empty<string>());
-            _macroEngine.Clear();
+            if (!_isCapturing)
+                _macroEngine.Clear();
         }
     }
 
     public void AddBinding()
     {
-        if (_selectedKeyboard is null || _profile is null || _bindVk == 0 || string.IsNullOrWhiteSpace(_bindTarget))
+        if (_selectedKeyboard is null || _profile is null || _selectedLayer is null
+            || _bindVk == 0 || string.IsNullOrWhiteSpace(_bindTarget))
             return;
 
-        // Replace any existing binding for the same key.
-        var existing = _profile.Bindings.FirstOrDefault(b => b.VirtualKey == _bindVk);
+        // Replace any existing binding for the same key on this layer.
+        var existing = _selectedLayer.Bindings.FirstOrDefault(b => b.VirtualKey == _bindVk);
         if (existing is not null)
         {
-            _profile.Bindings.Remove(existing);
+            _selectedLayer.Bindings.Remove(existing);
             Bindings.Remove(existing);
         }
 
@@ -216,12 +427,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             KeyName = _bindKeyName,
             Action = new MacroAction { Kind = _bindKind, Target = _bindTarget.Trim(), Arguments = _bindArgs.Trim() },
         };
-        _profile.Bindings.Add(binding);
+        _selectedLayer.Bindings.Add(binding);
         Bindings.Add(binding);
         _profileStore.Save(_profile);
 
         if (_isCapturing)
-            _macroEngine.SetBindings(_profile.Bindings);
+            _macroEngine.SetProfile(_profile);
 
         BindTarget = string.Empty;
         BindArgs = string.Empty;
@@ -229,13 +440,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void RemoveBinding(MacroBinding binding)
     {
-        if (_profile is null)
+        if (_profile is null || _selectedLayer is null)
             return;
-        _profile.Bindings.Remove(binding);
+        _selectedLayer.Bindings.Remove(binding);
         Bindings.Remove(binding);
         _profileStore.Save(_profile);
         if (_isCapturing)
-            _macroEngine.SetBindings(_profile.Bindings);
+            _macroEngine.SetProfile(_profile);
     }
 
     // Decider thread: do the absolute minimum and return.
@@ -271,7 +482,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _drainTimer.Stop();
+        _macroEngine.ActiveLayerChanged -= OnActiveLayerChanged;
         _backend.CapturedKey -= OnCapturedKey;
         _backend.Dispose();
     }
+}
+
+// One entry in the media-key dropdown: a friendly label and the token the executor maps.
+public sealed class MediaKeyOption
+{
+    public MediaKeyOption(string label, string token)
+    {
+        Label = label;
+        Token = token;
+    }
+
+    public string Label { get; }
+    public string Token { get; }
 }

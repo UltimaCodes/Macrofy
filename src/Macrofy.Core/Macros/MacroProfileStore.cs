@@ -40,12 +40,15 @@ public sealed class MacroProfileStore
                 if (profile is not null)
                 {
                     profile.DeviceId = deviceId;
+                    profile.Normalize(); // migrate legacy (pre-layers) profiles to a Base layer
                     return profile;
                 }
             }
             catch { /* fall through to a fresh profile on a corrupt file */ }
         }
-        return new MacroProfile { DeviceId = deviceId, DeviceName = deviceName };
+        var fresh = new MacroProfile { DeviceId = deviceId, DeviceName = deviceName };
+        fresh.Normalize();
+        return fresh;
     }
 
     public void Save(MacroProfile profile)

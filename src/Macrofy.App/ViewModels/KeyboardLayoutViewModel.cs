@@ -33,9 +33,9 @@ public sealed class KeyboardLayoutViewModel
 
     private void Row() => _rows.Add(_current = new List<KeyCapViewModel>());
 
-    private void K(string label, int vk, double u = 1)
+    private void K(string label, int vk, double u = 1, bool capturable = true)
     {
-        var cap = new KeyCapViewModel(label, vk, u * Unit);
+        var cap = new KeyCapViewModel(label, vk, u * Unit, capturable: capturable);
         _current.Add(cap);
         if (!_byVk.TryGetValue(vk, out var list))
             _byVk[vk] = list = new List<KeyCapViewModel>();
@@ -90,11 +90,13 @@ public sealed class KeyboardLayoutViewModel
         Sp(1); K("↑", 0x26); Sp(1); Sp(0.5);
         K("1", 0x61); K("2", 0x62); K("3", 0x63); K("Ent", 0x0D);
 
-        // Control row
+        // Control row. The Windows keys (0x5B/0x5C) are marked uncapturable: the OS routes
+        // them before Raw Input, so Macrofy can't attribute or block them. Keep this in sync
+        // with WhKeyboardBackend.IsExcluded.
         Row();
-        K("Ctrl", 0xA2, 1.25); K("Win", 0x5B, 1.25); K("Alt", 0xA4, 1.25);
+        K("Ctrl", 0xA2, 1.25); K("Win", 0x5B, 1.25, capturable: false); K("Alt", 0xA4, 1.25);
         K("Space", 0x20, 6.25);
-        K("Alt", 0xA5, 1.25); K("Win", 0x5C, 1.25); K("Menu", 0x5D, 1.25); K("Ctrl", 0xA3, 1.25); Sp(0.5);
+        K("Alt", 0xA5, 1.25); K("Win", 0x5C, 1.25, capturable: false); K("Menu", 0x5D, 1.25); K("Ctrl", 0xA3, 1.25); Sp(0.5);
         K("←", 0x25); K("↓", 0x28); K("→", 0x27); Sp(0.5);
         K("0", 0x60, 2); K(".", 0x6E); Sp(1);
     }

@@ -1,0 +1,43 @@
+<ui:FluentWindow x:Class="Macrofy.App.FirstRunKeyHintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Heads-up"
+        Width="470" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
+        Background="{StaticResource RmWindowBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Heads-up" />
+
+        <StackPanel Grid.Row="1" Margin="24,6,24,22">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource RmAccentMutedBrush}">
+                    <ui:SymbolIcon Symbol="Info24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="A couple of keys can't be macros" FontSize="16" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Text="The Windows keys can't be turned into macros. Windows acts on them before Macrofy ever sees them, so they're shown dimmed on the keyboard and can't be bound. Every other key works normally." />
+
+            <ui:CardExpander Margin="0,16,0,0">
+                <ui:CardExpander.Header>
+                    <TextBlock Text="Why can't they be captured?" FontWeight="SemiBold" />
+                </ui:CardExpander.Header>
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="Macrofy figures out which keyboard a key came from using Raw Input, then a hook decides whether to block it. The Windows keys are handled by the operating system before that step — so without a kernel driver (which Macrofy avoids on purpose, to stay invisible to anti-cheat) there's no way to identify or block them." />
+            </ui:CardExpander>
+
+            <ui:Button Margin="0,18,0,0" HorizontalAlignment="Right" Appearance="Primary"
+                       Content="Got it" Click="Ok_Click" MinWidth="96" />
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

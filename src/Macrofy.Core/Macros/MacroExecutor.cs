@@ -8,6 +8,24 @@ namespace Macrofy.Core.Macros;
 // so a slow launch can never stall capture.
 public static class MacroExecutor
 {
+    // Runs a whole binding: a single action, or a multi-step sequence with delays between
+    // steps. Always invoked off the input threads (Task.Run from the engine), so sleeping
+    // between steps can never stall capture.
+    public static void Run(MacroBinding binding)
+    {
+        if (!binding.HasSteps)
+        {
+            Execute(binding.Action);
+            return;
+        }
+        foreach (var step in binding.Steps)
+        {
+            Execute(step.Action);
+            if (step.DelayMsAfter > 0)
+                System.Threading.Thread.Sleep(step.DelayMsAfter);
+        }
+    }
+
     public static void Execute(MacroAction action)
     {
         try
@@ -29,6 +47,9 @@ public static class MacroExecutor
                     break;
                 case MacroActionKind.SendHotkey:
                     SendHotkey(action.Target);
+                    break;
+                case MacroActionKind.MediaKey:
+                    SendMediaKey(action.Target);
                     break;
             }
         }
@@ -87,6 +108,24 @@ public static class MacroExecutor
         foreach (var m in mods) SendVk(m, down: true);
         if (key != 0) { SendVk(key, down: true); SendVk(key, down: false); }
         for (int i = mods.Count - 1; i >= 0; i--) SendVk(mods[i], down: false);
+    }
+
+    private static void SendMediaKey(string token)
+    {
+        ushort vk = token switch
+        {
+            "Mute" => 0xAD,
+            "VolumeDown" => 0xAE,
+            "VolumeUp" => 0xAF,
+            "Next" => 0xB0,
+            "Prev" => 0xB1,
+            "Stop" => 0xB2,
+            "PlayPause" => 0xB3,
+            _ => 0,
+        };
+        if (vk == 0) return;
+        SendVk(vk, down: true);
+        SendVk(vk, down: false);
     }
 
     private static void SendVk(ushort vk, bool down)
