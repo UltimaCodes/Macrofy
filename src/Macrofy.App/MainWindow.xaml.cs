@@ -236,6 +236,66 @@ public partial class MainWindow : FluentWindow
     private void AddBindingButton_Click(object sender, RoutedEventArgs e)
         => _viewModel.AddBinding();
 
+    private void AddStepButton_Click(object sender, RoutedEventArgs e)
+        => _viewModel.AddStep();
+
+    private void StepUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: MacroStep step })
+            _viewModel.MoveStep(step, -1);
+    }
+
+    private void StepDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: MacroStep step })
+            _viewModel.MoveStep(step, +1);
+    }
+
+    private void StepRemoveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: MacroStep step })
+            _viewModel.RemoveStep(step);
+    }
+
+    private void ExportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_viewModel.CanUseProfile)
+            return;
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export macro profile",
+            Filter = "Macrofy profile (*.json)|*.json|All files (*.*)|*.*",
+            FileName = _viewModel.ExportFileName,
+            DefaultExt = ".json",
+        };
+        if (dlg.ShowDialog(this) == true)
+            _viewModel.ExportProfile(dlg.FileName);
+    }
+
+    private void ImportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_viewModel.CanUseProfile)
+            return;
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import macro profile",
+            Filter = "Macrofy profile (*.json)|*.json|All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dlg.ShowDialog(this) != true)
+            return;
+
+        var confirm = System.Windows.MessageBox.Show(this,
+            "Importing replaces all macros and layers on the selected keyboard. Continue?",
+            "Import profile", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.OK)
+            return;
+
+        if (!_viewModel.ImportProfile(dlg.FileName))
+            System.Windows.MessageBox.Show(this, "That file couldn't be read as a Macrofy profile.",
+                "Import failed", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+    }
+
     private void RemoveBindingButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: MacroBinding binding })

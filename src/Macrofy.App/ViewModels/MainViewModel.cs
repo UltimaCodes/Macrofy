@@ -31,6 +31,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<MacroLayer> Layers { get; } = new();
     public ObservableCollection<string> LayerTargets { get; } = new();
     public ObservableCollection<string> LearnedKeys { get; } = new();
+    public ObservableCollection<MacroStep> PendingSteps { get; } = new();
 
     private KeyboardLayoutViewModel _keyboardLayout = new();
     public KeyboardLayoutViewModel KeyboardLayout
@@ -186,7 +187,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public int BindVk
     {
         get => _bindVk;
-        set { if (SetProperty(ref _bindVk, value)) OnPropertyChanged(nameof(HasBindKey)); }
+        set
+        {
+            if (SetProperty(ref _bindVk, value))
+            {
+                OnPropertyChanged(nameof(HasBindKey));
+                // Picking a different key starts a fresh sequence for it.
+                if (PendingSteps.Count > 0)
+                {
+                    PendingSteps.Clear();
+                    OnPropertyChanged(nameof(HasPendingSteps));
+                }
+            }
+        }
     }
 
     private string _bindKeyName = string.Empty;
@@ -575,11 +588,73 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ---- multi-step sequence builder ----
+
+    private int _bindDelayMs = 100;
+    public int BindDelayMs
+    {
+        get => _bindDelayMs;
+        set => SetProperty(ref _bindDelayMs, value);
+    }
+
+    public bool HasPendingSteps => PendingSteps.Count > 0;
+
+    // The action currently configured in the form, or null if it isn't filled in.
+    private MacroAction? CurrentAction()
+    {
+        var action = new MacroAction
+        {
+            Kind = _bindKind,
+            Target = (_bindTarget ?? string.Empty).Trim(),
+            Arguments = (_bindArgs ?? string.Empty).Trim(),
+        };
+        return action.IsEmpty ? null : action;
+    }
+
+    // Append the configured action to the sequence and clear the fields for the next one.
+    public void AddStep()
+    {
+        var action = CurrentAction();
+        if (action is null)
+            return;
+        PendingSteps.Add(new MacroStep { Action = action, DelayMsAfter = Math.Max(0, _bindDelayMs) });
+        OnPropertyChanged(nameof(HasPendingSteps));
+        BindTarget = string.Empty;
+        BindArgs = string.Empty;
+    }
+
+    public void RemoveStep(MacroStep step)
+    {
+        PendingSteps.Remove(step);
+        OnPropertyChanged(nameof(HasPendingSteps));
+    }
+
+    public void MoveStep(MacroStep step, int direction)
+    {
+        int i = PendingSteps.IndexOf(step);
+        int j = i + direction;
+        if (i >= 0 && j >= 0 && j < PendingSteps.Count)
+            PendingSteps.Move(i, j);
+    }
+
     public void AddBinding()
     {
-        if (_selectedKeyboard is null || _profile is null || _selectedLayer is null
-            || _bindVk == 0 || string.IsNullOrWhiteSpace(_bindTarget))
+        if (_selectedKeyboard is null || _profile is null || _selectedLayer is null || _bindVk == 0)
             return;
+
+        // Assemble the macro: the steps already added, plus whatever's currently configured.
+        var steps = new List<MacroStep>(PendingSteps);
+        var current = CurrentAction();
+        if (current is not null)
+            steps.Add(new MacroStep { Action = current, DelayMsAfter = 0 });
+        if (steps.Count == 0)
+            return;
+
+        var binding = new MacroBinding { VirtualKey = _bindVk, KeyName = _bindKeyName };
+        if (steps.Count == 1)
+            binding.Action = steps[0].Action;   // single action — keep it simple/back-compatible
+        else
+            binding.Steps = steps;              // a real sequence
 
         // Replace any existing binding for the same key on this layer.
         var existing = _selectedLayer.Bindings.FirstOrDefault(b => b.VirtualKey == _bindVk);
@@ -588,13 +663,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _selectedLayer.Bindings.Remove(existing);
             Bindings.Remove(existing);
         }
-
-        var binding = new MacroBinding
-        {
-            VirtualKey = _bindVk,
-            KeyName = _bindKeyName,
-            Action = new MacroAction { Kind = _bindKind, Target = _bindTarget.Trim(), Arguments = _bindArgs.Trim() },
-        };
         _selectedLayer.Bindings.Add(binding);
         Bindings.Add(binding);
         _profileStore.Save(_profile);
@@ -602,8 +670,55 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (_isCapturing)
             _macroEngine.SetProfile(_profile);
 
+        PendingSteps.Clear();
+        OnPropertyChanged(nameof(HasPendingSteps));
         BindTarget = string.Empty;
         BindArgs = string.Empty;
+    }
+
+    // ---- profile import / export ----
+
+    public bool CanUseProfile => _profile is not null && _selectedKeyboard is not null;
+
+    public string ExportFileName
+    {
+        get
+        {
+            string name = _selectedKeyboard?.DisplayName ?? "macros";
+            foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name + ".macrofy.json";
+        }
+    }
+
+    public void ExportProfile(string path)
+    {
+        if (_profile is not null)
+            _profileStore.Export(_profile, path);
+    }
+
+    public bool ImportProfile(string path)
+    {
+        if (_selectedKeyboard is null)
+            return false;
+        var imported = _profileStore.Import(path);
+        if (imported is null)
+            return false;
+
+        // Keep it pointed at the current device; take its layers/bindings.
+        imported.DeviceId = _selectedKeyboard.Id;
+        imported.DeviceName = _selectedKeyboard.DisplayName;
+        _profile = imported;
+        _profileStore.Save(_profile);
+
+        Layers.Clear();
+        foreach (var l in _profile.Layers)
+            Layers.Add(l);
+        SelectedLayer = Layers.FirstOrDefault();
+
+        if (_isCapturing)
+            _macroEngine.SetProfile(_profile);
+        return true;
     }
 
     public void RemoveBinding(MacroBinding binding)

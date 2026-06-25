@@ -53,4 +53,20 @@ public sealed class MacroProfileStore
 
     public void Save(MacroProfile profile)
         => File.WriteAllText(PathFor(profile.DeviceId), JsonSerializer.Serialize(profile, Options));
+
+    // Write a profile to an arbitrary path (export / share / back up).
+    public void Export(MacroProfile profile, string path)
+        => File.WriteAllText(path, JsonSerializer.Serialize(profile, Options));
+
+    // Read a profile from an arbitrary path. Returns null if the file isn't a valid profile.
+    public MacroProfile? Import(string path)
+    {
+        try
+        {
+            var profile = JsonSerializer.Deserialize<MacroProfile>(File.ReadAllText(path), Options);
+            profile?.Normalize();
+            return profile;
+        }
+        catch { return null; }
+    }
 }

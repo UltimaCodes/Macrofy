@@ -355,9 +355,18 @@
                                 <ScrollViewer Margin="16,14,16,14" VerticalScrollBarVisibility="Auto"
                                               local:SmoothScroll.Enabled="True">
                                   <StackPanel>
-                                    <TextBlock Text="MACROS" FontSize="11" FontWeight="SemiBold"
-                                               Margin="0,0,0,10"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    <Grid Margin="0,0,0,10">
+                                        <TextBlock Text="MACROS" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <ui:Button Content="Import" Padding="8,3" FontSize="11"
+                                                       ToolTip="Replace this keyboard's macros from a file"
+                                                       Click="ImportProfileButton_Click" />
+                                            <ui:Button Content="Export" Padding="8,3" FontSize="11" Margin="6,0,0,0"
+                                                       ToolTip="Save this keyboard's macros to a file"
+                                                       Click="ExportProfileButton_Click" />
+                                        </StackPanel>
+                                    </Grid>
 
                                     <!-- LAYERS: pick which layer you're editing; + / – manage them -->
                                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -483,8 +492,61 @@
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                        Text="{Binding BindTargetHelp}" />
 
+                                            <!-- Multi-step sequence builder (not for layer switches) -->
+                                            <StackPanel Visibility="{Binding IsLayerKind, Converter={StaticResource InverseBoolToVis}}">
+                                                <Grid Margin="0,12,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="then wait" VerticalAlignment="Center" FontSize="12"
+                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                        <ui:TextBox Width="56" Margin="6,0,6,0"
+                                                                    Text="{Binding BindDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Text="ms" VerticalAlignment="Center" FontSize="12"
+                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <ui:Button Grid.Column="1" Content="+ Add step" Click="AddStepButton_Click"
+                                                               IsEnabled="{Binding HasBindKey}" />
+                                                </Grid>
+
+                                                <ItemsControl ItemsSource="{Binding PendingSteps}" Margin="0,8,0,0"
+                                                              Visibility="{Binding HasPendingSteps, Converter={StaticResource BoolToVis}}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="6" Background="#14FFFFFF">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding Action.Description}" FontSize="12"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                        <TextBlock FontSize="10"
+                                                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                                                   Text="{Binding DelayMsAfter, StringFormat='then wait {0} ms'}"
+                                                                                   Visibility="{Binding DelayMsAfter, Converter={StaticResource InverseEmptyToVis}}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                        <ui:Button Content="↑" Padding="6,2" Click="StepUpButton_Click" />
+                                                                        <ui:Button Content="↓" Padding="6,2" Margin="4,0,0,0" Click="StepDownButton_Click" />
+                                                                        <ui:Button Content="✕" Padding="6,2" Margin="4,0,0,0" Click="StepRemoveButton_Click" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <TextBlock Margin="2,4,0,0" FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                           Text="Add steps to run several actions in order, or just fill one action and hit Save." />
+                                            </StackPanel>
+
                                             <ui:Button Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary"
-                                                       Content="Add / update macro" Click="AddBindingButton_Click"
+                                                       Content="Save macro" Click="AddBindingButton_Click"
                                                        IsEnabled="{Binding HasBindKey}" />
                                         </StackPanel>
                                     </Border>
