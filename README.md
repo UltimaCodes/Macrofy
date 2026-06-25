@@ -127,12 +127,30 @@ src/
   Macrofy.Diag/          console diagnostics (list / monitor / capture / selftest)
 ```
 
-## Roadmap
+## The phases
 
-- **Phase 1 — detection** ✅ Raw Input enumeration; identify which keyboard sent a key.
-- **Phase 2 — isolation** ✅ block the captured device (`WH_KEYBOARD`), pass others through.
-- **Phase 3 — macro engine** ✅ bind `key → action`; JSON profiles per device.
-- **Phase 4 — polish** system tray, autostart, multi-step macros, profile import/export.
+- **Phase 1 — Detection** ✅
+  Enumerate every physical keyboard via Raw Input, group a device's HID collections
+  together by VID/PID, filter out non-keyboard HID devices, and auto-name each from
+  its HID product string. Custom names can be saved per device.
+
+- **Phase 2 — Isolation** ✅
+  Block the captured keyboard's keys system-wide while leaving every other keyboard
+  native. This was the hard part. The first approach — an in-process `WH_KEYBOARD_LL`
+  hook correlated with Raw Input — is a **dead end**: that hook fires *before* Raw
+  Input, and when it blocks a key Windows never generates that key's Raw Input, so
+  blocking destroys the only evidence of which device the key came from. The working
+  approach is a global **`WH_KEYBOARD`** hook (native `MacrofyHook.dll`) that fires at
+  the cooked-message stage, *after* Raw Input has identified the device; it blocks
+  only the captured keyboard and passes the rest through with no re-injection.
+
+- **Phase 3 — Macros** ✅
+  Bind each captured key to an action — launch app, open URL, type text, send hotkey,
+  run command — saved as per-device JSON profiles in `%AppData%\Macrofy\profiles\`,
+  and executed on a background thread so a slow launch never stalls capture.
+
+- **Phase 4 — Polish** (next)
+  System tray + autostart, multi-step macros, and profile import/export.
 
 ## License
 

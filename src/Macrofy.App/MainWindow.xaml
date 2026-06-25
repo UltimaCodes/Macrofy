@@ -332,23 +332,64 @@
                     <!-- ABOUT VIEW -->
                     <Grid Margin="28,22,28,22" MaxWidth="660" HorizontalAlignment="Left"
                           Visibility="{Binding IsChecked, ElementName=NavAbout, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-                            <TextBlock Text="About" FontSize="26" FontWeight="Bold" Margin="0,0,0,12" />
-                            <ui:Card Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="How capture works" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                               Text="Macrofy uses Raw Input to tell which physical keyboard each keystroke came from, and a low-level keyboard hook to swallow the captured device's keys before any app sees them. No drivers, no kernel components." />
-                                </StackPanel>
-                            </ui:Card>
-                            <ui:Card>
-                                <StackPanel>
-                                    <TextBlock Text="What's next" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                               Text="Phase 3 adds the macro engine — bind each captured key to an action (launch app, send a hotkey, type text, media controls), saved as JSON profiles." />
-                                </StackPanel>
-                            </ui:Card>
-                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="About" FontSize="26" FontWeight="Bold" Margin="0,0,0,4" />
+                                <TextBlock Margin="0,0,0,14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Text="Macrofy — isolate one keyboard and turn it into a macro pad, while your other keyboards keep working normally. Driver-free." />
+
+                                <ui:Card Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="How capture works" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   Text="Raw Input tells Macrofy which physical keyboard each keystroke came from. A global WH_KEYBOARD hook (a small native DLL) fires after Raw Input has already identified the device, so it can block ONLY the captured keyboard's keys and pass every other keyboard through untouched — no re-injection. No kernel driver, nothing installed system-wide, no anti-cheat footprint." />
+                                    </StackPanel>
+                                </ui:Card>
+
+                                <ui:Card Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Macros" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   Text="Capture a keyboard, press a key to select it, and bind it to an action — launch an app, open a URL, type text, send a hotkey, or run a command. Bindings save per device as JSON and run on a background thread, so a slow launch never stalls capture." />
+                                    </StackPanel>
+                                </ui:Card>
+
+                                <ui:Card>
+                                    <StackPanel>
+                                        <TextBlock Text="The phases" FontWeight="SemiBold" Margin="0,0,0,10" />
+
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="✓ Phase 1 — Detection" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Enumerate every physical keyboard via Raw Input, group a device's HID collections together by VID/PID, and auto-name each from its HID product string." />
+                                        </StackPanel>
+
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="✓ Phase 2 — Isolation" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Block the captured keyboard's keys system-wide while leaving all other keyboards native. The in-process WH_KEYBOARD_LL hook turned out to be a dead end — blocking a key destroys the Raw Input needed to know its device — so this uses a global WH_KEYBOARD hook that decides after Raw Input." />
+                                        </StackPanel>
+
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="✓ Phase 3 — Macros" FontWeight="SemiBold" Foreground="{StaticResource RmAccentBrush}" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Text="Bind each captured key to an action (launch app, open URL, type text, send hotkey, run command), saved as per-device JSON profiles and executed off the input threads." />
+                                        </StackPanel>
+
+                                        <StackPanel>
+                                            <TextBlock Text="• Phase 4 — Polish (next)"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Text="System tray + autostart, multi-step macros, and profile import/export." />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ui:Card>
+                            </StackPanel>
+                        </ScrollViewer>
                     </Grid>
                 </Grid>
             </Border>
