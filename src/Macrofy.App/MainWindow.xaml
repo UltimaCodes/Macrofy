@@ -11,7 +11,7 @@
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="None"
-        Background="{StaticResource RmWindowBrush}">
+        Background="{DynamicResource RmWindowBrush}">
 
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -27,8 +27,8 @@
             <Border Width="{Binding Width}" Height="30" Background="Transparent"
                     Cursor="Hand" MouseLeftButtonUp="KeyCap_Click">
                 <Border x:Name="cap" Margin="1.5" CornerRadius="5" RenderTransformOrigin="0.5,0.5"
-                        Background="{StaticResource RmCardBrush}"
-                        BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1">
+                        Background="{DynamicResource RmCardBrush}"
+                        BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1">
                     <Border.RenderTransform>
                         <ScaleTransform x:Name="capScale" />
                     </Border.RenderTransform>
@@ -49,8 +49,8 @@
                             Value="Windows grabs this key before Macrofy ever sees it, so it can't be a macro." />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsPressed}" Value="True">
-                    <Setter TargetName="cap" Property="Background" Value="{StaticResource RmAccentBrush}" />
-                    <Setter TargetName="cap" Property="BorderBrush" Value="{StaticResource RmAccentBrush}" />
+                    <Setter TargetName="cap" Property="Background" Value="{DynamicResource RmAccentBrush}" />
+                    <Setter TargetName="cap" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
                     <Setter TargetName="lbl" Property="Foreground" Value="#06201C" />
                     <Setter TargetName="lbl" Property="FontWeight" Value="SemiBold" />
                     <DataTrigger.EnterActions>
@@ -106,7 +106,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- SIDEBAR PANEL -->
-            <Border Grid.Column="0" Background="{StaticResource RmSidebarBrush}"
+            <Border Grid.Column="0" Background="{DynamicResource RmSidebarBrush}"
                     CornerRadius="12" Margin="8,0,4,0">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="18,18,18,20">
@@ -145,7 +145,7 @@
             </Border>
 
             <!-- CONTENT PANEL -->
-            <Border Grid.Column="1" Background="{StaticResource RmPanelBrush}"
+            <Border Grid.Column="1" Background="{DynamicResource RmPanelBrush}"
                     CornerRadius="12" Margin="4,0,8,0">
                 <Grid>
 
@@ -200,7 +200,7 @@
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <Border Grid.Column="0" Width="40" Height="40" CornerRadius="9"
-                                                            Background="{StaticResource RmIconBgBrush}" Margin="0,0,12,0">
+                                                            Background="{DynamicResource RmIconBgBrush}" Margin="0,0,12,0">
                                                         <ui:SymbolIcon Symbol="Keyboard24" FontSize="20"
                                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </Border>
@@ -294,8 +294,8 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- TEST -->
-                            <Border Grid.Column="0" Background="{StaticResource RmCardBrush}"
-                                    BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1"
+                            <Border Grid.Column="0" Background="{DynamicResource RmCardBrush}"
+                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1"
                                     CornerRadius="12" Padding="20,16">
                                 <Grid>
                                     <DockPanel>
@@ -326,22 +326,22 @@
                                     </DockPanel>
 
                                     <!-- Calibration overlay -->
-                                    <Border Background="{StaticResource RmCardBrush}" CornerRadius="12"
+                                    <Border Background="{DynamicResource RmCardBrush}" CornerRadius="12"
                                             Visibility="{Binding IsLearning, Converter={StaticResource BoolToVis}}">
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     MaxWidth="440" Margin="24">
                                             <ui:SymbolIcon Symbol="Keyboard24" FontSize="34" HorizontalAlignment="Center"
-                                                           Foreground="{StaticResource RmAccentBrush}" />
+                                                           Foreground="{DynamicResource RmAccentBrush}" />
                                             <TextBlock Text="Learning your keyboard" FontSize="18" FontWeight="SemiBold"
                                                        HorizontalAlignment="Center" Margin="0,10,0,0" />
                                             <TextBlock TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Text="Press every key on this keyboard once and we'll record exactly which keys it has. Nothing types or fires macros while you do this." />
                                             <TextBlock HorizontalAlignment="Center" Margin="0,14,0,0" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource RmAccentBrush}"
+                                                       Foreground="{DynamicResource RmAccentBrush}"
                                                        Text="{Binding LearnedKeys.Count, StringFormat='{}{0} keys recorded'}" />
                                             <Border Margin="0,10,0,0" MaxHeight="120" CornerRadius="6"
-                                                    Background="{StaticResource RmSubtleBrush}" Padding="8"
+                                                    Background="{DynamicResource RmSubtleBrush}" Padding="8"
                                                     Visibility="{Binding LearnedKeys.Count, Converter={StaticResource InverseEmptyToVis}}">
                                                 <ScrollViewer VerticalScrollBarVisibility="Auto" local:SmoothScroll.Enabled="True">
                                                     <ItemsControl ItemsSource="{Binding LearnedKeys}">
@@ -351,9 +351,9 @@
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
                                                                 <Border Margin="0,0,5,5" CornerRadius="5" Padding="7,3"
-                                                                        Background="{StaticResource RmAccentMutedBrush}">
+                                                                        Background="{DynamicResource RmAccentMutedBrush}">
                                                                     <TextBlock Text="{Binding}" FontSize="11"
-                                                                               Foreground="{StaticResource RmAccentBrush}" />
+                                                                               Foreground="{DynamicResource RmAccentBrush}" />
                                                                 </Border>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
@@ -371,8 +371,8 @@
                             </Border>
 
                             <!-- MACROS: bind captured keys to actions -->
-                            <Border Grid.Column="2" Background="{StaticResource RmCardBrush}"
-                                    BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1"
+                            <Border Grid.Column="2" Background="{DynamicResource RmCardBrush}"
+                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1"
                                     CornerRadius="12">
                                 <ScrollViewer Margin="16,14,8,14" VerticalScrollBarVisibility="Auto"
                                               local:SmoothScroll.Enabled="True">
@@ -396,9 +396,9 @@
                                             <TextBlock Text="LAYERS" FontSize="11" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                             <Border HorizontalAlignment="Right" CornerRadius="4" Padding="6,1"
-                                                    Background="{StaticResource RmAccentMutedBrush}"
+                                                    Background="{DynamicResource RmAccentMutedBrush}"
                                                     Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock FontSize="10" Foreground="{StaticResource RmAccentBrush}"
+                                                <TextBlock FontSize="10" Foreground="{DynamicResource RmAccentBrush}"
                                                            Text="{Binding ActiveLayerName, StringFormat='active: {0}'}" />
                                             </Border>
                                         </Grid>
@@ -427,7 +427,7 @@
 
                                     <!-- Add-binding form -->
                                     <Border DockPanel.Dock="Top" CornerRadius="8" Padding="12" Margin="0,0,0,12"
-                                            Background="{StaticResource RmSubtleBrush}">
+                                            Background="{DynamicResource RmSubtleBrush}">
                                         <StackPanel>
                                             <!-- STEP 1: pick a key -->
                                             <TextBlock Text="STEP 1: PICK A KEY" FontSize="10" FontWeight="SemiBold"
@@ -437,7 +437,7 @@
                                                        Text="Press a key on the captured keyboard and it'll show up below."
                                                        Visibility="{Binding HasBindKey, Converter={StaticResource InverseBoolToVis}}" />
                                             <Border Margin="0,6,0,0" CornerRadius="6" Padding="10,6"
-                                                    Background="{StaticResource RmAccentBrush}"
+                                                    Background="{DynamicResource RmAccentBrush}"
                                                     HorizontalAlignment="Left"
                                                     Visibility="{Binding HasBindKey, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Foreground="#06201C" FontWeight="SemiBold"
@@ -537,7 +537,7 @@
                                                               Visibility="{Binding HasPendingSteps, Converter={StaticResource BoolToVis}}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="6" Background="{StaticResource RmSubtleBrush}">
+                                                            <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="6" Background="{DynamicResource RmSubtleBrush}">
                                                                 <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="*" />
@@ -585,7 +585,7 @@
                                             <ItemsControl ItemsSource="{Binding Bindings}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="6" Background="{StaticResource RmSubtleBrush}">
+                                                        <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="6" Background="{DynamicResource RmSubtleBrush}">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
@@ -862,8 +862,8 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
-                                                Background="{StaticResource RmAccentMutedBrush}">
-                                            <ui:SymbolIcon Symbol="Keyboard24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                Background="{DynamicResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Keyboard24" FontSize="22" Foreground="{DynamicResource RmAccentBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
@@ -882,8 +882,8 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
-                                                Background="{StaticResource RmAccentMutedBrush}">
-                                            <ui:SymbolIcon Symbol="Flash24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                Background="{DynamicResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Flash24" FontSize="22" Foreground="{DynamicResource RmAccentBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
@@ -902,8 +902,8 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
-                                                Background="{StaticResource RmAccentMutedBrush}">
-                                            <ui:SymbolIcon Symbol="Layer24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                Background="{DynamicResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="Layer24" FontSize="22" Foreground="{DynamicResource RmAccentBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
@@ -922,8 +922,8 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11" VerticalAlignment="Top"
-                                                Background="{StaticResource RmAccentMutedBrush}">
-                                            <ui:SymbolIcon Symbol="ShieldKeyhole24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                                                Background="{DynamicResource RmAccentMutedBrush}">
+                                            <ui:SymbolIcon Symbol="ShieldKeyhole24" FontSize="22" Foreground="{DynamicResource RmAccentBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
@@ -946,11 +946,11 @@
         </Grid>
 
         <!-- BOTTOM STATUS BAR -->
-        <Border Grid.Row="2" Background="{StaticResource RmSidebarBrush}" CornerRadius="12"
+        <Border Grid.Row="2" Background="{DynamicResource RmSidebarBrush}" CornerRadius="12"
                 Margin="8,8,8,8" Height="62">
             <Grid Margin="18,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource RmCardBrush}">
+                    <Border Width="38" Height="38" CornerRadius="9" Background="{DynamicResource RmCardBrush}">
                         <ui:SymbolIcon Symbol="Keyboard24" FontSize="18"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -966,10 +966,10 @@
                 <Border HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="14" Padding="14,6">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="Background" Value="{StaticResource RmIconBgBrush}" />
+                            <Setter Property="Background" Value="{DynamicResource RmIconBgBrush}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsCapturing}" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource RmAccentBrush}" />
+                                    <Setter Property="Background" Value="{DynamicResource RmAccentBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>

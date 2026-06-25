@@ -7,7 +7,7 @@
         Width="500" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
         ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
-        Background="{StaticResource RmWindowBrush}">
+        Background="{DynamicResource RmWindowBrush}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -34,7 +34,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
-                                Background="{StaticResource RmAccentBrush}">
+                                Background="{DynamicResource RmAccentBrush}">
                             <TextBlock Text="1" Foreground="#06201C" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -48,7 +48,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
-                                Background="{StaticResource RmAccentBrush}">
+                                Background="{DynamicResource RmAccentBrush}">
                             <TextBlock Text="2" Foreground="#06201C" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -62,7 +62,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
-                                Background="{StaticResource RmAccentBrush}">
+                                Background="{DynamicResource RmAccentBrush}">
                             <TextBlock Text="3" Foreground="#06201C" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>

@@ -6,9 +6,9 @@ namespace Macrofy.App;
 
 public enum AppTheme { System, Light, Dark }
 
-// Applies light/dark across both WPF-UI's themed brushes and Macrofy's own palette. Our
-// custom Rm* brushes are shared SolidColorBrush instances, so changing their .Color live
-// updates everything that references them (no DynamicResource needed).
+// Applies light/dark across both WPF-UI's themed brushes and Macrofy's own palette. The
+// custom Rm* brushes are referenced via DynamicResource, so swapping the resource entries
+// here re-themes the whole UI (we can't mutate them in place - style setters freeze them).
 public static class ThemeManager
 {
     public static void Apply(AppTheme theme)
@@ -47,9 +47,9 @@ public static class ThemeManager
         catch { return true; }
     }
 
+    // Replace the resource entry outright (the brushes get frozen by style setters, so we
+    // can't mutate them). Everything references these via DynamicResource, so swapping the
+    // entry updates the whole UI.
     private static void Set(string key, string hex)
-    {
-        if (Application.Current.Resources[key] is SolidColorBrush brush)
-            brush.Color = (Color)ColorConverter.ConvertFromString(hex);
-    }
+        => Application.Current.Resources[key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
 }

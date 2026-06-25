@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Viewbox Stretch="Uniform">
         <Grid Width="100" Height="100">
-            <Border CornerRadius="22" Background="{StaticResource RmAccentBrush}" />
+            <Border CornerRadius="22" Background="{DynamicResource RmAccentBrush}" />
             <Path Data="M23,77 L23,24 L50,55 L77,24 L77,77"
                   Stroke="#06201C" StrokeThickness="13.5"
                   StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />

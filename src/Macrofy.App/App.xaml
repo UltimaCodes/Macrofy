@@ -43,11 +43,11 @@
                                         <Condition Property="IsMouseOver" Value="True" />
                                         <Condition Property="IsChecked" Value="False" />
                                     </MultiTrigger.Conditions>
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource RmHoverBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmHoverBrush}" />
                                 </MultiTrigger>
                                 <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource RmAccentMutedBrush}" />
-                                    <Setter Property="Foreground" Value="{StaticResource RmAccentBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentMutedBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource RmAccentBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -63,8 +63,8 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
                             <Border x:Name="Bd" CornerRadius="13" Padding="12,5"
-                                    Background="{StaticResource RmCardBrush}"
-                                    BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1">
+                                    Background="{DynamicResource RmCardBrush}"
+                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1">
                                 <ContentPresenter VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
@@ -72,8 +72,8 @@
                                     <Setter TargetName="Bd" Property="BorderBrush" Value="#3C434F" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource RmAccentBrush}" />
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource RmAccentBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentBrush}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
                                     <Setter Property="Foreground" Value="#06201C" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </Trigger>
@@ -92,8 +92,8 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
-                            <Border x:Name="Bd" Background="{StaticResource RmCardBrush}"
-                                    BorderBrush="{StaticResource RmCardBorderBrush}" BorderThickness="1"
+                            <Border x:Name="Bd" Background="{DynamicResource RmCardBrush}"
+                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1"
                                     CornerRadius="10" Padding="14,12">
                                 <ContentPresenter />
                             </Border>
@@ -102,8 +102,8 @@
                                     <Setter TargetName="Bd" Property="BorderBrush" Value="#3C434F" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource RmAccentBrush}" />
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource RmAccentMutedBrush}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentMutedBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

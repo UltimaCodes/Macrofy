@@ -6,7 +6,7 @@
         Width="380" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
         ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
-        Background="{StaticResource RmWindowBrush}">
+        Background="{DynamicResource RmWindowBrush}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

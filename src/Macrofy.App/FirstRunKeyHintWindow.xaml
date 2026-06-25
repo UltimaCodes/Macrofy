@@ -6,7 +6,7 @@
         Width="470" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
         ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
-        Background="{StaticResource RmWindowBrush}">
+        Background="{DynamicResource RmWindowBrush}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -17,8 +17,8 @@
 
         <StackPanel Grid.Row="1" Margin="24,6,24,22">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource RmAccentMutedBrush}">
-                    <ui:SymbolIcon Symbol="Info24" FontSize="22" Foreground="{StaticResource RmAccentBrush}"
+                <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource RmAccentMutedBrush}">
+                    <ui:SymbolIcon Symbol="Info24" FontSize="22" Foreground="{DynamicResource RmAccentBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <TextBlock Text="Two keys can't be macros" FontSize="16" FontWeight="Bold"
