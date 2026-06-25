@@ -24,7 +24,9 @@ Think of it like a Stream Deck, except it's a whole keyboard and it's free.
   65%, 60% or a numpad, or hit "Learn keys" and press every key once to build a custom
   layout for oddball devices.
 - **Lives in the tray.** Minimize to tray, start with Windows, auto-capture a chosen
-  keyboard at launch, and a global hotkey to toggle capture from anywhere.
+  keyboard at launch, and toggle capture with a global hotkey you pick.
+- **Yours to look at.** Light or dark theme (or just follow your Windows setting), with
+  smooth scrolling and little touches throughout.
 
 ## How it works
 
@@ -92,39 +94,11 @@ To make it always-on: in **Settings**, turn on "Start with Windows" and "Auto-ca
 keyboard at startup", and Macrofy will quietly take over your macro keyboard every time
 you log in.
 
-## Build from source
-
-```powershell
-# one-time: only needed if you change the native hook (native/hook.c)
-winget install BrechtSanders.WinLibs.POSIX.UCRT
-native\build.ps1        # builds native\MacrofyHook.dll
-
-dotnet build            # the hook DLL is copied next to the app automatically
-dotnet run --project src/Macrofy.App
-```
-
-You need the .NET 8 SDK on Windows (x64). A prebuilt `MacrofyHook.dll` is committed, so
-unless you're editing the C hook you don't even need the compiler.
-
 ## Where your stuff lives
 
 Everything is in `%AppData%\Macrofy\`: device names, per-keyboard macro profiles,
 layouts, your settings, and a `log.txt` if anything ever crashes. There's an "Open config
 folder" button in Settings.
-
-## Project layout
-
-```
-Macrofy.sln
-native/
-  hook.c                 the native WH_KEYBOARD hook (build.ps1 builds MacrofyHook.dll)
-src/
-  Macrofy.App/           the WPF app (.NET 8), styled with WPF-UI
-  Macrofy.Core/          input + macros, no UI
-    Input/               capture engine (WH_KEYBOARD + Raw Input), device detection
-    Macros/              actions, layers, the engine, JSON profiles
-  Macrofy.Diag/          console tool for poking at the input pipeline
-```
 
 ## License
 

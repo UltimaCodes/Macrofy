@@ -65,6 +65,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _backend.Start();
 
         _macroEngine.ActiveLayerChanged += OnActiveLayerChanged;
+        SmoothScroll.GlobalEnabled = _settings.SmoothScrolling;
 
         _drainTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -121,6 +122,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     // Raised the first moment capture is turned on, so the window can show the one-time
     // "some keys can't be macro'd" hint at a point where it's actually relevant.
     public event EventHandler? CaptureEngaged;
+
+    // Raised to flash a small confirmation toast in the window.
+    public event EventHandler<string>? Toast;
+    private void ShowToast(string message) => Toast?.Invoke(this, message);
 
     private bool _isCapturing;
     public bool IsCapturing
@@ -463,6 +468,57 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set { if (value != _settings.ShowTrayNotifications) { _settings.ShowTrayNotifications = value; _settings.Save(); OnPropertyChanged(); } }
     }
 
+    public AppTheme[] Themes { get; } = { AppTheme.System, AppTheme.Light, AppTheme.Dark };
+
+    public AppTheme SelectedTheme
+    {
+        get => _settings.Theme;
+        set
+        {
+            if (value == _settings.Theme)
+                return;
+            _settings.Theme = value;
+            _settings.Save();
+            OnPropertyChanged();
+            ThemeManager.Apply(value);
+        }
+    }
+
+    public bool SmoothScrolling
+    {
+        get => _settings.SmoothScrolling;
+        set
+        {
+            if (value == _settings.SmoothScrolling)
+                return;
+            _settings.SmoothScrolling = value;
+            _settings.Save();
+            SmoothScroll.GlobalEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool AlwaysRunAsAdmin
+    {
+        get => _settings.AlwaysRunAsAdmin;
+        set { if (value != _settings.AlwaysRunAsAdmin) { _settings.AlwaysRunAsAdmin = value; _settings.Save(); OnPropertyChanged(); } }
+    }
+
+    // ---- remembered window placement ----
+
+    public (double Left, double Top, double Width, double Height, bool Maximized) GetSavedPlacement()
+        => (_settings.WindowLeft, _settings.WindowTop, _settings.WindowWidth, _settings.WindowHeight, _settings.WindowMaximized);
+
+    public void SaveWindowPlacement(double left, double top, double width, double height, bool maximized)
+    {
+        _settings.WindowLeft = left;
+        _settings.WindowTop = top;
+        _settings.WindowWidth = width;
+        _settings.WindowHeight = height;
+        _settings.WindowMaximized = maximized;
+        _settings.Save();
+    }
+
     // Raised when the global-hotkey setting changes so the window can (un)register it live.
     public event EventHandler? GlobalHotkeyToggled;
 
@@ -546,6 +602,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         LoadProfileForSelected();
         if (_isCapturing && _profile is not null)
             _macroEngine.SetProfile(_profile);
+        ShowToast("All macros reset");
     }
 
     // ---- keyboard layout + learn/calibrate ----
@@ -631,6 +688,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(SelectedLayoutKind));
             OnPropertyChanged(nameof(ShowLearnPrompt));
             RebuildKeyboardLayout();
+            ShowToast("Layout saved");
         }
         ApplyCapture(); // restore capture to whatever the toggle says
     }
@@ -786,6 +844,46 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasPendingSteps));
         BindTarget = string.Empty;
         BindArgs = string.Empty;
+        ShowToast("Macro saved");
+    }
+
+    // Click a key on the on-screen keyboard to select it (and load its macro for editing).
+    public void PickKey(int vk)
+    {
+        BindVk = vk;
+        BindKeyName = VirtualKeyNames.Name(vk);
+        LoadBindingForEdit(vk);
+    }
+
+    // Pull an existing binding for this key into the form so it can be fixed in place.
+    private void LoadBindingForEdit(int vk)
+    {
+        var existing = _selectedLayer?.Bindings.FirstOrDefault(b => b.VirtualKey == vk);
+        PendingSteps.Clear();
+        if (existing is null)
+        {
+            OnPropertyChanged(nameof(HasPendingSteps));
+            return;
+        }
+        if (existing.HasSteps)
+        {
+            foreach (var s in existing.Steps)
+                PendingSteps.Add(new MacroStep
+                {
+                    Action = new MacroAction { Kind = s.Action.Kind, Target = s.Action.Target, Arguments = s.Action.Arguments },
+                    DelayMsAfter = s.DelayMsAfter,
+                });
+            BindKind = MacroActionKind.LaunchApp; // the sequence lives in the step list
+            BindTarget = string.Empty;
+            BindArgs = string.Empty;
+        }
+        else
+        {
+            BindKind = existing.Action.Kind;
+            BindTarget = existing.Action.Target;
+            BindArgs = existing.Action.Arguments;
+        }
+        OnPropertyChanged(nameof(HasPendingSteps));
     }
 
     // ---- profile import / export ----
@@ -806,7 +904,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public void ExportProfile(string path)
     {
         if (_profile is not null)
+        {
             _profileStore.Export(_profile, path);
+            ShowToast("Profile exported");
+        }
     }
 
     public bool ImportProfile(string path)
@@ -830,6 +931,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         if (_isCapturing)
             _macroEngine.SetProfile(_profile);
+        ShowToast("Profile imported");
         return true;
     }
 

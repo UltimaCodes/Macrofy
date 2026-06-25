@@ -35,6 +35,24 @@ public sealed class InverseBoolToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// Friendly names for the theme dropdown.
+public sealed class AppThemeToLabelConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is AppTheme theme
+            ? theme switch
+            {
+                AppTheme.System => "Follow Windows",
+                AppTheme.Light => "Light",
+                AppTheme.Dark => "Dark",
+                _ => theme.ToString(),
+            }
+            : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // Friendly names for the keyboard-layout dropdown.
 public sealed class LayoutKindToLabelConverter : IValueConverter
 {

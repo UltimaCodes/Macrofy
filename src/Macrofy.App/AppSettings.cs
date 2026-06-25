@@ -30,6 +30,22 @@ public sealed class AppSettings
     // Show the "still running in the tray" balloon when minimizing to tray.
     public bool ShowTrayNotifications { get; set; } = true;
 
+    // Light / dark / follow Windows.
+    public AppTheme Theme { get; set; } = AppTheme.System;
+
+    // Eased ("inertia") mouse-wheel scrolling.
+    public bool SmoothScrolling { get; set; } = true;
+
+    // Always relaunch elevated on startup (prompts for admin every launch).
+    public bool AlwaysRunAsAdmin { get; set; }
+
+    // Remembered window placement.
+    public double WindowWidth { get; set; }
+    public double WindowHeight { get; set; }
+    public double WindowLeft { get; set; } = double.NaN;
+    public double WindowTop { get; set; } = double.NaN;
+    public bool WindowMaximized { get; set; }
+
     public static AppSettings Load()
     {
         try

@@ -30,7 +30,12 @@ public partial class MainWindow : FluentWindow
 
         _viewModel = new MainViewModel(new WhKeyboardBackend());
         _viewModel.CaptureEngaged += OnCaptureEngaged;
+        _viewModel.Toast += OnToast;
         DataContext = _viewModel;
+
+        ApplyAppIcon();
+        RestoreWindowPlacement();
+        Loaded += (_, _) => MaybeShowWelcome();
 
         InitTray();
 
@@ -141,6 +146,77 @@ public partial class MainWindow : FluentWindow
     private void OnKeyboardFocusChanged(object sender, KeyboardFocusChangedEventArgs e)
         => _viewModel.SetCaptureSuspended(e.NewFocus is System.Windows.Controls.TextBox);
 
+    // ---- branding, window placement, toasts, click-to-bind ----
+
+    private void ApplyAppIcon()
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "Assets", "macrofy.ico");
+            if (!File.Exists(path))
+                return;
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource = new Uri(path);
+            bmp.DecodePixelWidth = 64;
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            Icon = bmp;
+            AppTitleBar.Icon = new ImageIcon { Source = bmp };
+        }
+        catch { /* fall back to the default chrome icon */ }
+    }
+
+    private void RestoreWindowPlacement()
+    {
+        var (left, top, width, height, max) = _viewModel.GetSavedPlacement();
+        if (double.IsNaN(left) || double.IsNaN(top) || width < 200 || height < 200)
+            return;
+        bool onScreen = left + width > SystemParameters.VirtualScreenLeft
+            && left < SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth
+            && top + height > SystemParameters.VirtualScreenTop
+            && top < SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight;
+        if (!onScreen)
+            return; // a monitor probably got unplugged; fall back to centered
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = left; Top = top; Width = width; Height = height;
+        if (max)
+            WindowState = WindowState.Maximized;
+    }
+
+    private void SaveWindowPlacement()
+    {
+        var b = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+        if (b.Width > 0 && b.Height > 0)
+            _viewModel.SaveWindowPlacement(b.Left, b.Top, b.Width, b.Height, WindowState == WindowState.Maximized);
+    }
+
+    private void MaybeShowWelcome()
+    {
+        if (!IsVisible || OnboardingState.HasSeen("welcome"))
+            return;
+        OnboardingState.MarkSeen("welcome");
+        new WelcomeWindow { Owner = this }.ShowDialog();
+    }
+
+    private void OnToast(object? sender, string message)
+    {
+        var snackbar = new Snackbar(SnackbarHost)
+        {
+            Content = message,
+            Timeout = TimeSpan.FromSeconds(2),
+            Appearance = ControlAppearance.Secondary,
+        };
+        snackbar.Show();
+    }
+
+    // Click a key on the on-screen keyboard to pick it (and load its macro to edit).
+    private void KeyCap_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ViewModels.KeyCapViewModel { Vk: int vk, Capturable: true } })
+            _viewModel.PickKey(vk);
+    }
+
     // ---- system tray ----
 
     private void InitTray()
@@ -210,6 +286,7 @@ public partial class MainWindow : FluentWindow
     // Quit from the tray menu always exits.
     protected override void OnClosing(CancelEventArgs e)
     {
+        SaveWindowPlacement();
         if (_reallyExit)
         {
             base.OnClosing(e);

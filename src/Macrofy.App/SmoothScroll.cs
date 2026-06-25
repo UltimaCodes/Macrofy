@@ -11,6 +11,10 @@ namespace Macrofy.App;
 // is read-only, so we animate a proxy attached property that forwards to ScrollToVerticalOffset.
 public static class SmoothScroll
 {
+    // Global on/off (the "Inertia scrolling" setting). When off, the wheel falls back to
+    // Windows' default scrolling.
+    public static bool GlobalEnabled = true;
+
     public static readonly DependencyProperty EnabledProperty =
         DependencyProperty.RegisterAttached("Enabled", typeof(bool), typeof(SmoothScroll),
             new PropertyMetadata(false, OnEnabledChanged));
@@ -51,6 +55,9 @@ public static class SmoothScroll
 
     private static void OnWheel(object sender, MouseWheelEventArgs e)
     {
+        if (!GlobalEnabled)
+            return;
+
         var sv = (ScrollViewer)sender;
 
         // If a dropdown is open, a wheel here would scroll the panel while the popup floats in

@@ -1,0 +1,80 @@
+<ui:FluentWindow x:Class="Macrofy.App.WelcomeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:Macrofy.App"
+        Title="Welcome"
+        Width="500" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="None"
+        Background="{StaticResource RmWindowBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Welcome" ShowMaximize="False" ShowMinimize="False" />
+
+        <Grid Grid.Row="1" Margin="26,4,26,24">
+            <ui:Button Content="Skip ›" Appearance="Transparent" FontSize="12"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" Click="Skip_Click" />
+
+            <StackPanel>
+                <local:LogoMark Width="54" Height="54" HorizontalAlignment="Left" />
+                <TextBlock Text="welcome to Macrofy" FontSize="22" FontWeight="Bold" Margin="0,14,0,0" />
+                <TextBlock TextWrapping="Wrap" Margin="0,6,0,0"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Text="grab a spare keyboard and it turns into a macro pad. your main keyboard stays normal. here's your first macro in 3 steps:" />
+
+                <StackPanel Margin="0,18,0,0">
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                Background="{StaticResource RmAccentBrush}">
+                            <TextBlock Text="1" Foreground="#06201C" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="on the Devices tab, pick the keyboard you want and flip on Capture. it stops typing and becomes yours." />
+                    </Grid>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                Background="{StaticResource RmAccentBrush}">
+                            <TextBlock Text="2" Foreground="#06201C" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="press a key on it, or click one on the on-screen keyboard, to pick it." />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                                Background="{StaticResource RmAccentBrush}">
+                            <TextBlock Text="3" Foreground="#06201C" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="pick what it should do, hit Save, and that key runs your macro. that's it." />
+                    </Grid>
+                </StackPanel>
+
+                <ui:Button Content="let's go" Appearance="Primary" HorizontalAlignment="Left"
+                           Margin="0,22,0,0" MinWidth="130" Click="Ok_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

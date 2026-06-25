@@ -21,6 +21,8 @@
             <SolidColorBrush x:Key="RmCardBrush" Color="#1C1D22" />
             <SolidColorBrush x:Key="RmCardBorderBrush" Color="#2A2C33" />
             <SolidColorBrush x:Key="RmHoverBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="RmSubtleBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="RmIconBgBrush" Color="#1FFFFFFF" />
 
             <!-- Left-rail navigation item (pill) -->
             <Style x:Key="NavItemStyle" TargetType="RadioButton">

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -36,6 +37,15 @@ public partial class App : Application
             }
         }
 
+        var settings = AppSettings.Load();
+
+        // "Always run as administrator": relaunch elevated before doing anything else.
+        if (settings.AlwaysRunAsAdmin && !ElevationHelper.IsElevated && RelaunchElevated())
+        {
+            Shutdown();
+            return;
+        }
+
         // Log unhandled exceptions and fail gracefully instead of vanishing.
         DispatcherUnhandledException += (_, args) =>
         {
@@ -55,6 +65,8 @@ public partial class App : Application
 
         base.OnStartup(e);
 
+        ThemeManager.Apply(settings.Theme);
+
         // Listen for a second launch asking us to surface the window.
         _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         var listener = new Thread(() =>
@@ -67,12 +79,30 @@ public partial class App : Application
 
         // Tray app: come up hidden when launched with --minimized or when the user prefers it.
         bool minimized = e.Args.Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase))
-                         || AppSettings.Load().StartMinimized;
+                         || settings.StartMinimized;
 
         _window = new MainWindow();
         MainWindow = _window;
         if (!minimized)
             _window.Show();
+    }
+
+    private static bool RelaunchElevated()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(Environment.ProcessPath!)
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                Arguments = "--relaunch",
+            });
+            return true;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false; // user declined the UAC prompt; keep running un-elevated
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

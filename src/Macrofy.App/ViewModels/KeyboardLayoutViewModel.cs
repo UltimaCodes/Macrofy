@@ -80,7 +80,7 @@ public sealed class KeyboardLayoutViewModel
         K("6", 0x36); K("7", 0x37); K("8", 0x38); K("9", 0x39); K("0", 0x30);
         K("-", 0xBD); K("=", 0xBB); K("Bksp", 0x08, 2);
         if (navCluster) { Sp(0.5); K("Ins", 0x2D); K("Home", 0x24); K("PgUp", 0x21); }
-        if (numpad) { Sp(0.5); K("Num", 0x90); K("/", 0x6F); K("*", 0x6A); K("-", 0x6D); }
+        if (numpad) { Sp(0.5); K("NumLk", 0x90); K("/", 0x6F); K("*", 0x6A); K("-", 0x6D); }
 
         // Tab row
         Row();
@@ -119,7 +119,7 @@ public sealed class KeyboardLayoutViewModel
 
     private void BuildNumpad()
     {
-        Row(); K("Num", 0x90); K("/", 0x6F); K("*", 0x6A); K("-", 0x6D);
+        Row(); K("NumLk", 0x90); K("/", 0x6F); K("*", 0x6A); K("-", 0x6D);
         Row(); K("7", 0x67); K("8", 0x68); K("9", 0x69); K("+", 0x6B);
         Row(); K("4", 0x64); K("5", 0x65); K("6", 0x66);
         Row(); K("1", 0x61); K("2", 0x62); K("3", 0x63); K("Ent", 0x0D);
