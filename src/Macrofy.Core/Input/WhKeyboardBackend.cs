@@ -95,6 +95,18 @@ public sealed class WhKeyboardBackend : IInputBackend
         _ => vk,
     };
 
+    // Raw Input reports modifiers as the generic VKs (0x10-0x12), but the UI and saved
+    // bindings use the left/right-specific ones. MakeCode tells the shifts apart; the E0
+    // flag tells right Ctrl/Alt from left. The block/pass path is unaffected - Decide
+    // folds these back through Canonical.
+    private static ushort SplitLeftRight(ushort vk, ushort makeCode, ushort flags) => vk switch
+    {
+        0x10 => makeCode == 0x36 ? (ushort)0xA1 : (ushort)0xA0,
+        0x11 => (flags & RI_KEY_E0) != 0 ? (ushort)0xA3 : (ushort)0xA2,
+        0x12 => (flags & RI_KEY_E0) != 0 ? (ushort)0xA5 : (ushort)0xA4,
+        _ => vk,
+    };
+
     private void DeciderThread()
     {
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -274,6 +286,7 @@ public sealed class WhKeyboardBackend : IInputBackend
             ushort vkey = raw.keyboard.VKey;
             if (vkey is 0 or 0xFF)
                 return;
+            vkey = SplitLeftRight(vkey, raw.keyboard.MakeCode, raw.keyboard.Flags);
 
             bool isDown = (raw.keyboard.Flags & RI_KEY_BREAK) == 0;
             bool captured = IsCaptured(raw.header.hDevice);

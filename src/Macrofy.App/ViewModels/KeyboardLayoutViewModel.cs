@@ -1,15 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Macrofy.App;
 
 namespace Macrofy.App.ViewModels;
 
-// The on-screen keyboard. The shape depends on the chosen layout (Full/TKL/75/65/60/Numpad)
-// or a Custom set of learned keys. Rows feed the UI; SetPressed lights keys live.
+// The on-screen keyboard. The shape depends on the chosen layout (Full/TKL/75/65/60/Numpad,
+// ANSI or ISO) or a Custom set of learned keys. Rows feed the UI; SetPressed lights keys live.
+//
+// Alphanumeric keys are placed by scan code (physical position) and the active keyboard
+// layout decides which virtual key lives there and what to print on it. That way an AZERTY
+// keyboard shows A where A actually is, and a UK keyboard's ' key isn't labelled ~.
 public sealed class KeyboardLayoutViewModel
 {
     private const double Unit = 30;       // px per 1u key
     public double KeyHeight => 30;
+
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    private const uint MAPVK_VSC_TO_VK_EX = 3;
 
     private readonly List<List<KeyCapViewModel>> _rows = new();
     private readonly Dictionary<int, List<KeyCapViewModel>> _byVk = new();
@@ -17,8 +27,9 @@ public sealed class KeyboardLayoutViewModel
     public IReadOnlyList<IReadOnlyList<KeyCapViewModel>> Rows => _rows;
 
     public KeyboardLayoutViewModel(KeyboardLayoutKind kind = KeyboardLayoutKind.Full,
-                                   IReadOnlyList<int>? customKeys = null)
-        => Build(kind, customKeys);
+                                   IReadOnlyList<int>? customKeys = null,
+                                   bool iso = false)
+        => Build(kind, customKeys, iso);
 
     public void SetPressed(int vk, bool pressed)
     {
@@ -47,9 +58,25 @@ public sealed class KeyboardLayoutViewModel
         list.Add(cap);
     }
 
+    // A key identified by its physical position. The active layout maps scan -> VK and
+    // VK -> label; the US values are the fallback if the layout can't answer.
+    private void KS(int scan, string usLabel, int usVk, double u = 1)
+    {
+        int vk = (int)MapVirtualKey((uint)scan, MAPVK_VSC_TO_VK_EX);
+        if (vk == 0)
+        {
+            K(usLabel, usVk, u);
+            return;
+        }
+        string label = VirtualKeyNames.Name(vk);
+        if (label.StartsWith("VK ", StringComparison.Ordinal))
+            label = usLabel;
+        K(label, vk, u);
+    }
+
     private void Sp(double u) => _current.Add(new KeyCapViewModel(string.Empty, null, u * Unit, isSpacer: true));
 
-    private void Build(KeyboardLayoutKind kind, IReadOnlyList<int>? customKeys)
+    private void Build(KeyboardLayoutKind kind, IReadOnlyList<int>? customKeys, bool iso)
     {
         switch (kind)
         {
@@ -76,34 +103,43 @@ public sealed class KeyboardLayoutViewModel
 
         // Number row
         Row();
-        K("~", 0xC0); K("1", 0x31); K("2", 0x32); K("3", 0x33); K("4", 0x34); K("5", 0x35);
-        K("6", 0x36); K("7", 0x37); K("8", 0x38); K("9", 0x39); K("0", 0x30);
-        K("-", 0xBD); K("=", 0xBB); K("Bksp", 0x08, 2);
+        KS(0x29, "~", 0xC0);
+        KS(0x02, "1", 0x31); KS(0x03, "2", 0x32); KS(0x04, "3", 0x33); KS(0x05, "4", 0x34);
+        KS(0x06, "5", 0x35); KS(0x07, "6", 0x36); KS(0x08, "7", 0x37); KS(0x09, "8", 0x38);
+        KS(0x0A, "9", 0x39); KS(0x0B, "0", 0x30);
+        KS(0x0C, "-", 0xBD); KS(0x0D, "=", 0xBB); K("Bksp", 0x08, 2);
         if (navCluster) { Sp(0.5); K("Ins", 0x2D); K("Home", 0x24); K("PgUp", 0x21); }
         if (numpad) { Sp(0.5); K("NumLk", 0x90); K("/", 0x6F); K("*", 0x6A); K("-", 0x6D); }
 
-        // Tab row
+        // Tab row. On ISO the backslash spot is the top half of the tall Enter.
         Row();
         K("Tab", 0x09, 1.5);
-        K("Q", 0x51); K("W", 0x57); K("E", 0x45); K("R", 0x52); K("T", 0x54); K("Y", 0x59);
-        K("U", 0x55); K("I", 0x49); K("O", 0x4F); K("P", 0x50); K("[", 0xDB); K("]", 0xDD);
-        K("\\", 0xDC, 1.5);
+        KS(0x10, "Q", 0x51); KS(0x11, "W", 0x57); KS(0x12, "E", 0x45); KS(0x13, "R", 0x52);
+        KS(0x14, "T", 0x54); KS(0x15, "Y", 0x59); KS(0x16, "U", 0x55); KS(0x17, "I", 0x49);
+        KS(0x18, "O", 0x4F); KS(0x19, "P", 0x50); KS(0x1A, "[", 0xDB); KS(0x1B, "]", 0xDD);
+        if (iso) K("Enter", 0x0D, 1.5);
+        else KS(0x2B, "\\", 0xDC, 1.5);
         if (navCluster) { Sp(0.5); K("Del", 0x2E); K("End", 0x23); K("PgDn", 0x22); }
         if (numpad) { Sp(0.5); K("7", 0x67); K("8", 0x68); K("9", 0x69); K("+", 0x6B); }
 
-        // Caps row
+        // Caps row. ISO keeps one more key here (the ANSI backslash's scan code) before
+        // the lower half of Enter.
         Row();
         K("Caps", 0x14, 1.75);
-        K("A", 0x41); K("S", 0x53); K("D", 0x44); K("F", 0x46); K("G", 0x47); K("H", 0x48);
-        K("J", 0x4A); K("K", 0x4B); K("L", 0x4C); K(";", 0xBA); K("'", 0xDE);
-        K("Enter", 0x0D, 2.25);
+        KS(0x1E, "A", 0x41); KS(0x1F, "S", 0x53); KS(0x20, "D", 0x44); KS(0x21, "F", 0x46);
+        KS(0x22, "G", 0x47); KS(0x23, "H", 0x48); KS(0x24, "J", 0x4A); KS(0x25, "K", 0x4B);
+        KS(0x26, "L", 0x4C); KS(0x27, ";", 0xBA); KS(0x28, "'", 0xDE);
+        if (iso) { KS(0x2B, "#", 0xDC); K("Enter", 0x0D, 1.25); }
+        else K("Enter", 0x0D, 2.25);
         if (numpad) { Sp(0.5); Sp(3); Sp(0.5); K("4", 0x64); K("5", 0x65); K("6", 0x66); }
 
-        // Shift row
+        // Shift row. ISO: short left Shift plus the extra key beside it (VK_OEM_102).
         Row();
-        K("Shift", 0xA0, 2.25);
-        K("Z", 0x5A); K("X", 0x58); K("C", 0x43); K("V", 0x56); K("B", 0x42); K("N", 0x4E);
-        K("M", 0x4D); K(",", 0xBC); K(".", 0xBE); K("/", 0xBF);
+        if (iso) { K("Shift", 0xA0, 1.25); KS(0x56, "\\", 0xE2); }
+        else K("Shift", 0xA0, 2.25);
+        KS(0x2C, "Z", 0x5A); KS(0x2D, "X", 0x58); KS(0x2E, "C", 0x43); KS(0x2F, "V", 0x56);
+        KS(0x30, "B", 0x42); KS(0x31, "N", 0x4E); KS(0x32, "M", 0x4D);
+        KS(0x33, ",", 0xBC); KS(0x34, ".", 0xBE); KS(0x35, "/", 0xBF);
         K("Shift", 0xA1, 2.75);
         if (arrows) { Sp(0.5); Sp(1); K("↑", 0x26); Sp(1); }
         if (numpad) { Sp(0.5); K("1", 0x61); K("2", 0x62); K("3", 0x63); K("Ent", 0x0D); }

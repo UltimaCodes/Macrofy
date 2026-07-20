@@ -115,5 +115,38 @@ public sealed class MacroProfile
         if (Layers.Count == 0)
             Layers.Add(new MacroLayer { Name = "Base", Bindings = LegacyBindings ?? new List<MacroBinding>() });
         LegacyBindings = null;
+        MigrateModifierKeys();
+    }
+
+    // Older builds saved modifier bindings under the generic VKs (0x10/0x11/0x12) because
+    // that's what Raw Input reported; the engine now splits left/right, so remap old files
+    // to the left-hand codes. If a layer somehow has both (a generic press-to-bind plus a
+    // click-to-bind that saved the specific code), the specific one wins and the generic
+    // duplicate is dropped.
+    private void MigrateModifierKeys()
+    {
+        foreach (var layer in Layers)
+        {
+            for (int i = layer.Bindings.Count - 1; i >= 0; i--)
+            {
+                var b = layer.Bindings[i];
+                (int vk, string name) = b.VirtualKey switch
+                {
+                    0x10 => (0xA0, "Left Shift"),
+                    0x11 => (0xA2, "Left Ctrl"),
+                    0x12 => (0xA4, "Left Alt"),
+                    _ => (0, string.Empty),
+                };
+                if (vk == 0)
+                    continue;
+                if (layer.Bindings.Any(other => other.VirtualKey == vk))
+                {
+                    layer.Bindings.RemoveAt(i);
+                    continue;
+                }
+                b.VirtualKey = vk;
+                b.KeyName = name;
+            }
+        }
     }
 }

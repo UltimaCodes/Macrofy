@@ -73,8 +73,9 @@ These come with the driver-free approach, they aren't bugs:
 
 ## Getting it
 
-Grab the latest build from [Releases](https://github.com/UltimaCodes/RapidMacro/releases),
-unzip it, and run `Macrofy.App.exe`.
+Grab `Macrofy.zip` from [Releases](https://github.com/UltimaCodes/RapidMacro/releases),
+extract it, and run `Macrofy.exe`. Keep `MacrofyHook.dll` next to the exe; that's the
+capture engine.
 
 Heads up: the build isn't code-signed, so the first time you run it Windows might show a
 blue "Windows protected your PC" box. That's just SmartScreen being cautious about an

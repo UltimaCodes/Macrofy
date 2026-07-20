@@ -35,7 +35,16 @@ public partial class MainWindow : FluentWindow
 
         ApplyAppIcon();
         RestoreWindowPlacement();
+        ClampToWorkArea();
         Loaded += (_, _) => MaybeShowWelcome();
+
+        // Fallback dragging: if the title bar's built-in drag ever fails to engage, an
+        // unhandled press on it still moves the window.
+        AppTitleBar.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
+        };
 
         InitTray();
 
@@ -181,6 +190,21 @@ public partial class MainWindow : FluentWindow
         Left = left; Top = top; Width = width; Height = height;
         if (max)
             WindowState = WindowState.Maximized;
+    }
+
+    // Fit small screens (1366x768 laptops): the default window is taller than those, and
+    // centering it put the title bar above the top edge with nothing left to grab. Shrink
+    // to the work area and, when restoring a saved spot, keep the title bar reachable.
+    private void ClampToWorkArea()
+    {
+        var wa = SystemParameters.WorkArea;
+        if (Width > wa.Width) Width = Math.Max(MinWidth, wa.Width - 16);
+        if (Height > wa.Height) Height = Math.Max(MinHeight, wa.Height - 16);
+        if (WindowStartupLocation == WindowStartupLocation.Manual)
+        {
+            Left = Math.Min(Math.Max(Left, wa.Left), Math.Max(wa.Left, wa.Right - Width));
+            Top = Math.Min(Math.Max(Top, wa.Top), Math.Max(wa.Top, wa.Bottom - Height));
+        }
     }
 
     private void SaveWindowPlacement()

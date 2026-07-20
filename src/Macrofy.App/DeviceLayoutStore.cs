@@ -10,6 +10,7 @@ public sealed class DeviceLayout
 {
     public KeyboardLayoutKind Kind { get; set; } = KeyboardLayoutKind.Full;
     public List<int> Keys { get; set; } = new();   // virtual-key codes (only used for Custom)
+    public bool IsIso { get; set; }                // ISO shape (tall Enter, extra key by left Shift)
 }
 
 // Persists per-device layouts to %AppData%/Macrofy/layouts.json (device id -> layout).

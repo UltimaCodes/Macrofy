@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:Macrofy.App"
         mc:Ignorable="d"
         Title="Macrofy"
-        Height="780" Width="1160" MinHeight="660" MinWidth="1020"
+        Height="780" Width="1160" MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="None"
@@ -260,6 +260,10 @@
                                                         </DataTemplate>
                                                     </ComboBox.ItemTemplate>
                                                 </ComboBox>
+                                                <CheckBox Content="ISO" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                          ToolTip="European (ISO) shape: tall Enter, short left Shift with an extra key beside it"
+                                                          IsChecked="{Binding IsIsoLayout, Mode=TwoWay}"
+                                                          Visibility="{Binding ShowIsoToggle, Converter={StaticResource BoolToVis}}" />
                                                 <ui:Button Content="Learn keys…" Margin="8,0,0,0"
                                                            ToolTip="Press every key on the device to build a custom layout"
                                                            Click="LearnKeysButton_Click" />

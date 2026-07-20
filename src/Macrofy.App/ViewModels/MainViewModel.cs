@@ -609,6 +609,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private KeyboardLayoutKind _layoutKind = KeyboardLayoutKind.Full;
     private List<int> _customKeys = new();
+    private bool _isIso;
 
     public KeyboardLayoutKind[] LayoutKinds { get; } =
     {
@@ -624,24 +625,50 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             if (!SetProperty(ref _layoutKind, value))
                 return;
-            if (_selectedKeyboard is not null)
-                _layoutStore.Set(_selectedKeyboard.Id, new DeviceLayout { Kind = value, Keys = _customKeys });
+            SaveLayoutForSelected();
             RebuildKeyboardLayout();
             OnPropertyChanged(nameof(ShowLearnPrompt));
+            OnPropertyChanged(nameof(ShowIsoToggle));
         }
+    }
+
+    // ISO (European) shape: tall Enter, short left Shift with an extra key beside it.
+    public bool IsIsoLayout
+    {
+        get => _isIso;
+        set
+        {
+            if (!SetProperty(ref _isIso, value))
+                return;
+            SaveLayoutForSelected();
+            RebuildKeyboardLayout();
+        }
+    }
+
+    // The ANSI/ISO distinction only means something for the full-size presets.
+    public bool ShowIsoToggle => _layoutKind is not (KeyboardLayoutKind.Numpad or KeyboardLayoutKind.Custom);
+
+    private void SaveLayoutForSelected()
+    {
+        if (_selectedKeyboard is not null)
+            _layoutStore.Set(_selectedKeyboard.Id,
+                new DeviceLayout { Kind = _layoutKind, Keys = _customKeys, IsIso = _isIso });
     }
 
     // The Custom layout is empty until the user calibrates - nudge them to learn keys.
     public bool ShowLearnPrompt => _layoutKind == KeyboardLayoutKind.Custom && _customKeys.Count == 0 && !_isLearning;
 
-    private void RebuildKeyboardLayout() => KeyboardLayout = new KeyboardLayoutViewModel(_layoutKind, _customKeys);
+    private void RebuildKeyboardLayout() => KeyboardLayout = new KeyboardLayoutViewModel(_layoutKind, _customKeys, _isIso);
 
     private void LoadLayoutForSelected()
     {
         var layout = _selectedKeyboard is null ? new DeviceLayout() : _layoutStore.Get(_selectedKeyboard.Id);
         _layoutKind = layout.Kind;
         _customKeys = layout.Keys ?? new List<int>();
+        _isIso = layout.IsIso;
         OnPropertyChanged(nameof(SelectedLayoutKind));
+        OnPropertyChanged(nameof(IsIsoLayout));
+        OnPropertyChanged(nameof(ShowIsoToggle));
         OnPropertyChanged(nameof(ShowLearnPrompt));
         RebuildKeyboardLayout();
     }
@@ -684,8 +711,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             _customKeys = _learnedVks.OrderBy(v => v).ToList();
             _layoutKind = KeyboardLayoutKind.Custom;
-            _layoutStore.Set(_selectedKeyboard.Id, new DeviceLayout { Kind = _layoutKind, Keys = _customKeys });
+            SaveLayoutForSelected();
             OnPropertyChanged(nameof(SelectedLayoutKind));
+            OnPropertyChanged(nameof(ShowIsoToggle));
             OnPropertyChanged(nameof(ShowLearnPrompt));
             RebuildKeyboardLayout();
             ShowToast("Layout saved");
