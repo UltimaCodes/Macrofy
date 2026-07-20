@@ -101,6 +101,9 @@ Everything is in `%AppData%\Macrofy\`: device names, per-keyboard macro profiles
 layouts, your settings, and a `log.txt` if anything ever crashes. There's an "Open config
 folder" button in Settings.
 
+## NOTE
+Virtual keyboards dont work so VMs might be janky, please try to use a physical keyboard in a non-vm environment
+
 ## License
 
 MIT, Ryaan Aaqil
