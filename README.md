@@ -55,10 +55,14 @@ hook (`native/hook.c`, built into `MacrofyHook.dll`):
 
 ### Why not a driver?
 
-A kernel driver would be the bulletproof way to do this, but anti-cheat systems
-(Vanguard, EAC, BattlEye) flag drivers just for being installed, and a lot of people
-who'd want this also play those games. So Macrofy stays driver-free. Close the app or
-toggle capture off and nothing is loaded at all.
+A kernel driver would be the bulletproof way to do this, but it's a heavier thing to
+install and to trust, and anti-cheat systems can be wary of drivers. So Macrofy stays
+driver-free. The hook only loads while you're actually capturing a keyboard, and unloads
+the moment you toggle capture off or close the app.
+
+That said, don't assume it's safe for competitive games with kernel-level anti-cheat
+(Vanguard, EAC, BattlEye). Macrofy injects a small hook DLL into other processes, which is
+the kind of thing those systems watch for. Use it in a game at your own risk.
 
 ### What it can't do (and that's fine)
 
@@ -66,10 +70,14 @@ These come with the driver-free approach, they aren't bugs:
 
 - The left and right Windows keys can't be macros. Windows handles them before Macrofy
   ever sees them, so they show up dimmed and can't be bound.
+- Capture only stops the keys reaching apps that read the keyboard the normal way. An app
+  that reads Raw Input, DirectInput, or polls the keyboard itself (many games, some
+  push-to-talk and streaming tools) still sees the captured keyboard. Macrofy shows a
+  notice when it detects this happening.
 - It can't capture inside apps running as administrator unless Macrofy is also running
   as administrator (there's a "Restart as administrator" button in Settings for that).
-- A few sandboxed Store apps won't load the hook, so the captured keyboard works normally
-  while one of those is in focus.
+- Microsoft Store apps (like Calculator) won't load the hook at all, so the captured
+  keyboard works normally while one of those is in focus.
 
 ## Getting it
 
