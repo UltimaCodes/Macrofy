@@ -7,11 +7,26 @@ public interface IInputBackend : IDisposable
     IReadOnlyList<KeyboardDevice> GetKeyboards(bool includeNonKeyboards = false);
 
     // Captured devices (by DevicePath) have their keys swallowed and surfaced via
-    // CapturedKey instead; everything else types normally.
+    // CapturedKey instead; everything else types normally. An empty set releases
+    // everything and removes the hook.
     void SetCapturedDevices(IEnumerable<string> devicePaths);
 
-    // Fires on the hook thread for every captured key; handlers must return fast.
+    // Fires on the backend thread for every captured key; handlers must return fast.
     event EventHandler<DeviceKeyEvent>? CapturedKey;
+
+    // A keyboard was plugged in or removed (backend thread; may fire in bursts).
+    event EventHandler? DevicesChanged;
+
+    // Captured keys went unblocked in this foreground process (backend thread).
+    event EventHandler<uint>? IsolationMiss;
+
+    // The hook was installed, removed, or failed to install (backend thread).
+    event EventHandler? HookStatusChanged;
+
+    bool IsHookInstalled { get; }
+
+    // Why the hook couldn't be installed, or null.
+    string? HookError { get; }
 
     void Start();
     void Stop();

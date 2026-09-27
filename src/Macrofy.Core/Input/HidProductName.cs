@@ -1,12 +1,18 @@
+using System.Collections.Concurrent;
 using System.Text;
 using static Macrofy.Core.Input.Interop.NativeMethods;
 
 namespace Macrofy.Core.Input;
 
-// Reads a HID device's USB product string (e.g. "X65 HE") for auto-naming.
+// Reads a HID device's USB product string (e.g. "X65 HE") for auto-naming. Cached per path:
+// device lists refresh on every plug/unplug, and opening a sleeping Bluetooth device can be slow.
 internal static class HidProductName
 {
-    public static string? TryGet(string devicePath)
+    private static readonly ConcurrentDictionary<string, string?> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public static string? TryGet(string devicePath) => Cache.GetOrAdd(devicePath, Read);
+
+    private static string? Read(string devicePath)
     {
         // Query-only access (0) so we don't fight the keyboard stack for the handle.
         nint handle = CreateFile(devicePath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE,

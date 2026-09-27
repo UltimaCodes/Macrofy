@@ -8,10 +8,14 @@ public sealed record RawKeyboard(
     ushort Vid,
     ushort Pid,
     int KeysTotal,
-    bool IsVirtual)
+    bool IsVirtual,
+    Guid? ContainerId = null)
 {
     public bool IsLikelyKeyboard => !IsVirtual && KeysTotal > 0;
 
-    // Collections of one physical device share VID/PID; fall back to the path.
-    public string GroupKey => HasVidPid ? $"{Vid:X4}:{Pid:X4}" : Path;
+    // Collections of one physical device share a container id, which also keeps two
+    // identical keyboards apart (they share a VID/PID). Fall back to VID/PID, then the path.
+    public string GroupKey => ContainerId is { } c ? c.ToString("N")
+        : HasVidPid ? $"{Vid:X4}:{Pid:X4}"
+        : Path;
 }

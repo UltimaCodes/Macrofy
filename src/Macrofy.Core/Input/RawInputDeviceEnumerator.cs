@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using static Macrofy.Core.Input.Interop.NativeMethods;
 
 namespace Macrofy.Core.Input;
@@ -7,6 +8,9 @@ namespace Macrofy.Core.Input;
 internal static class RawInputDeviceEnumerator
 {
     private const uint Error = unchecked((uint)-1);
+
+    public static IReadOnlyList<KeyboardDevice> GetKeyboards(bool includeNonKeyboards)
+        => DeviceGrouping.Group(EnumerateRaw(), includeNonKeyboards, ResolveName);
 
     public static IReadOnlyList<RawKeyboard> EnumerateRaw()
     {
@@ -34,36 +38,14 @@ internal static class RawInputDeviceEnumerator
             bool hasVidPid = DeviceNameResolver.TryParseVidPid(path, out var vid, out var pid);
             result.Add(new RawKeyboard(
                 d.hDevice, path, hasVidPid, vid, pid,
-                GetKeyboardKeyCount(d.hDevice), DeviceNameResolver.IsVirtual(path)));
+                GetKeyboardKeyCount(d.hDevice), DeviceNameResolver.IsVirtual(path),
+                TryGetContainerId(path)));
         }
         return result;
     }
 
-    // Group collections into physical devices, optionally hiding non-keyboards.
-    public static IReadOnlyList<KeyboardDevice> Group(IEnumerable<RawKeyboard> raws, bool includeNonKeyboards)
-    {
-        var devices = new List<KeyboardDevice>();
-        foreach (var group in raws.GroupBy(r => r.GroupKey))
-        {
-            var members = group.ToList();
-            bool isKeyboard = members.Any(m => m.IsLikelyKeyboard);
-            if (!includeNonKeyboards && !isKeyboard)
-                continue;
-
-            var paths = members.Select(m => m.Path)
-                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            string name = ResolveName(paths);
-            devices.Add(new KeyboardDevice(group.Key, name, paths, isKeyboard));
-        }
-
-        return devices
-            .OrderByDescending(d => d.IsLikelyKeyboard)
-            .ThenBy(d => d.DisplayName)
-            .ToList();
-    }
-
     // Prefer the device's real HID product string; fall back to VID:PID.
-    private static string ResolveName(IEnumerable<string> paths)
+    private static string ResolveName(IReadOnlyList<string> paths)
     {
         foreach (var p in paths)
         {
@@ -71,7 +53,7 @@ internal static class RawInputDeviceEnumerator
             if (!string.IsNullOrEmpty(product))
                 return product;
         }
-        return DeviceNameResolver.ResolveGroup(paths.First());
+        return DeviceNameResolver.ResolveGroup(paths[0]);
     }
 
     // Resolve the stable device path for a Raw Input handle.
@@ -114,5 +96,37 @@ internal static class RawInputDeviceEnumerator
         {
             Marshal.FreeHGlobal(buffer);
         }
+    }
+
+    // The container id Windows gives one physical device (all its functions share it).
+    private static Guid? TryGetContainerId(string interfacePath)
+    {
+        try
+        {
+            string? instanceId = GetInstanceId(interfacePath);
+            if (instanceId is null || CM_Locate_DevNodeW(out uint devInst, instanceId, 0) != CR_SUCCESS)
+                return null;
+            var key = DEVPKEY_Device_ContainerId;
+            var buffer = new byte[16];
+            uint size = (uint)buffer.Length;
+            if (CM_Get_DevNode_PropertyW(devInst, ref key, out uint type, buffer, ref size, 0) != CR_SUCCESS
+                || type != DEVPROP_TYPE_GUID || size != 16)
+                return null;
+            return new Guid(buffer);
+        }
+        catch { return null; }
+    }
+
+    private static string? GetInstanceId(string interfacePath)
+    {
+        var key = DEVPKEY_Device_InstanceId;
+        uint size = 0;
+        if (CM_Get_Device_Interface_PropertyW(interfacePath, ref key, out _, null, ref size, 0) == CR_BUFFER_SMALL && size > 0)
+        {
+            var buffer = new byte[size];
+            if (CM_Get_Device_Interface_PropertyW(interfacePath, ref key, out _, buffer, ref size, 0) == CR_SUCCESS)
+                return Encoding.Unicode.GetString(buffer, 0, (int)size).TrimEnd('\0');
+        }
+        return null;
     }
 }

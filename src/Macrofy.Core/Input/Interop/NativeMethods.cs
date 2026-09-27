@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Macrofy.Core.Input.Interop;
 
-// Win32 P/Invoke for Raw Input and the low-level keyboard hook.
+// Win32 P/Invoke for Raw Input, the decider window, key injection and device properties.
 internal static class NativeMethods
 {
     // Raw Input
@@ -11,14 +11,18 @@ internal static class NativeMethods
     public const ushort HID_USAGE_PAGE_GENERIC = 0x01;
     public const ushort HID_USAGE_GENERIC_KEYBOARD = 0x06;
 
-    public const uint RIDEV_INPUTSINK = 0x00000100;
     public const uint RIDEV_REMOVE = 0x00000001;
+    public const uint RIDEV_INPUTSINK = 0x00000100;
+    public const uint RIDEV_DEVNOTIFY = 0x00002000;   // WM_INPUT_DEVICE_CHANGE on plug/unplug
 
     public const uint RID_INPUT = 0x10000003;
     public const uint RIDI_DEVICENAME = 0x20000007;
     public const uint RIDI_DEVICEINFO = 0x2000000B;
 
+    public const int WM_INPUT_DEVICE_CHANGE = 0x00FE;
     public const int WM_INPUT = 0x00FF;
+    public const int GIDC_ARRIVAL = 1;
+    public const int GIDC_REMOVAL = 2;
 
     // RID_DEVICE_INFO with only the keyboard arm of the union laid out (we never
     // read the mouse/HID arms). dwNumberOfKeysTotal drives the "is it a real
@@ -39,6 +43,7 @@ internal static class NativeMethods
     public const ushort RI_KEY_MAKE = 0x00;
     public const ushort RI_KEY_BREAK = 0x01;
     public const ushort RI_KEY_E0 = 0x02;   // extended-key (E0) prefix
+    public const ushort RI_KEY_E1 = 0x04;   // E1 prefix (only Pause uses it)
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RAWINPUTDEVICE
@@ -101,42 +106,22 @@ internal static class NativeMethods
     public static extern uint GetRawInputDeviceInfo(
         nint hDevice, uint uiCommand, nint pData, ref uint pcbSize);
 
-    // Low-level keyboard hook
-    public const int WH_KEYBOARD_LL = 13;
-    public const int HC_ACTION = 0;
-
-    public const int WM_KEYDOWN = 0x0100;
-    public const int WM_KEYUP = 0x0101;
-    public const int WM_SYSKEYDOWN = 0x0104;
-    public const int WM_SYSKEYUP = 0x0105;
-
-    public const uint LLKHF_INJECTED = 0x10;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct KBDLLHOOKSTRUCT
-    {
-        public uint vkCode;
-        public uint scanCode;
-        public uint flags;
-        public uint time;
-        public nuint dwExtraInfo;
-    }
-
-    public delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern nint SetWindowsHookEx(
-        int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool UnhookWindowsHookEx(nint hhk);
-
-    [DllImport("user32.dll")]
-    public static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
-
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     public static extern nint GetModuleHandle(string? lpModuleName);
+
+    // Keyboard layout lookups
+    public const uint MAPVK_VK_TO_CHAR = 2;
+    public const uint MAPVK_VSC_TO_VK_EX = 3;
+    public const uint MAPVK_VK_TO_VSC_EX = 4;
+
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern short VkKeyScan(char ch);
+
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
 
     // SendInput (key injection)
     public const uint INPUT_KEYBOARD = 1;
@@ -209,17 +194,50 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool HidD_GetProductString(nint hidDeviceObject, byte[] buffer, uint bufferLength);
 
-    // Message-only window + message loop
-    public static readonly nint HWND_MESSAGE = new(-3);
+    // Device properties (container id = one physical device, even with many HID collections)
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DEVPROPKEY
+    {
+        public Guid fmtid;
+        public uint pid;
+    }
 
-    // Keeps the (hidden) raw-input window out of the taskbar / alt-tab. We use a real
-    // top-level window rather than HWND_MESSAGE because RIDEV_INPUTSINK only delivers
-    // background raw input to a genuine desktop window, not a message-only one.
+    public static DEVPROPKEY DEVPKEY_Device_InstanceId = new()
+    {
+        fmtid = new Guid(0x78c34fc8, 0x104a, 0x4aca, 0x9e, 0xa4, 0x52, 0x4d, 0x52, 0x99, 0x6e, 0x57),
+        pid = 256,
+    };
+
+    public static DEVPROPKEY DEVPKEY_Device_ContainerId = new()
+    {
+        fmtid = new Guid(0x8c7ed206, 0x3f8a, 0x4827, 0xb3, 0xab, 0xae, 0x9e, 0x1f, 0xae, 0xfc, 0x6c),
+        pid = 2,
+    };
+
+    public const int CR_SUCCESS = 0;
+    public const int CR_BUFFER_SMALL = 0x1A;
+    public const uint DEVPROP_TYPE_GUID = 0x0D;
+
+    [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+    public static extern int CM_Get_Device_Interface_PropertyW(string pszDeviceInterface, ref DEVPROPKEY propertyKey,
+        out uint propertyType, byte[]? propertyBuffer, ref uint propertyBufferSize, uint flags);
+
+    [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+    public static extern int CM_Locate_DevNodeW(out uint pdnDevInst, string pDeviceID, uint ulFlags);
+
+    [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+    public static extern int CM_Get_DevNode_PropertyW(uint dnDevInst, ref DEVPROPKEY propertyKey,
+        out uint propertyType, byte[]? propertyBuffer, ref uint propertyBufferSize, uint flags);
+
+    // The decider window + its message loop. We use a real top-level window rather than
+    // HWND_MESSAGE because RIDEV_INPUTSINK only delivers background raw input to a genuine
+    // desktop window, not a message-only one; WS_EX_TOOLWINDOW keeps it out of alt-tab.
     public const uint WS_EX_TOOLWINDOW = 0x00000080;
 
     public const uint WM_CLOSE = 0x0010;
     public const uint WM_DESTROY = 0x0002;
     public const uint WM_QUIT = 0x0012;
+    public const uint WM_APP = 0x8000;
 
     [DllImport("kernel32.dll")]
     public static extern uint GetCurrentThreadId();
@@ -235,10 +253,6 @@ internal static class NativeMethods
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetThreadPriority(nint hThread, int nPriority);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool PostThreadMessage(uint idThread, uint msg, nint wParam, nint lParam);
 
     public delegate nint WndProc(nint hWnd, uint msg, nint wParam, nint lParam);
 
@@ -296,21 +310,8 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool PeekMessage(out MSG lpMsg, nint hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern nint LoadLibrary(string lpFileName);
-
-    // Native WH_KEYBOARD hook DLL, shipped beside the exe. It fires after Raw Input (so
-    // the device is known) and asks our decider window - via WM_HOOK - whether to block.
-    public const int WM_HOOK = 0x8101;
-    public const string DeciderWindowClass = "MacrofyDeciderWnd";
-
-    [DllImport("MacrofyHook.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool StartHook();
-
-    [DllImport("MacrofyHook.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool StopHook();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern uint RegisterWindowMessage(string lpString);
 
     [DllImport("user32.dll")]
     public static extern int TranslateMessage([In] ref MSG lpMsg);
@@ -327,4 +328,24 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
+
+    // Process inspection (who's in the foreground when a key isn't blocked)
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    public const uint TOKEN_QUERY = 0x0008;
+    public const int TokenElevation = 20;
+    public const int TokenIsAppContainer = 29;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern nint OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool OpenProcessToken(nint processHandle, uint desiredAccess, out nint tokenHandle);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetTokenInformation(nint token, int infoClass, out int info, int length, out int returnLength);
 }
