@@ -8,9 +8,24 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
-  <!-- The hook DLL is embedded in Macrofy.Core and extracted at runtime, and the tray/title-bar
-       icons are pulled from the exe's own ApplicationIcon, so nothing needs to sit beside the exe.
-       That lets us publish as a single self-contained file. -->
+  <!-- The hook DLL ships beside the exe (publish.ps1), with an embedded copy in Macrofy.Core as
+       a fallback. Tray/title-bar icons come from the exe's own ApplicationIcon. -->
+
+  <!-- Shown in the exe's Properties > Details, and weighed by SmartScreen/AV: a blank publisher
+       reads as more suspicious. -->
+  <PropertyGroup>
+    <Product>Macrofy</Product>
+    <AssemblyTitle>Macrofy</AssemblyTitle>
+    <Company>Ryaan Aaqil</Company>
+    <Authors>Ryaan Aaqil</Authors>
+    <Description>Turn a spare keyboard into a macro pad on Windows.</Description>
+    <Copyright>Copyright © Ryaan Aaqil</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
 
   <!-- WinForms is enabled only for its NotifyIcon (system tray). Drop its implicit usings so
        its types don't collide with WPF's (Application, MessageBox, etc.); we fully-qualify the

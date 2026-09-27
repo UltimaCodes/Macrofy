@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Macrofy.Core.IO;
 
 namespace Macrofy.App;
 
@@ -61,8 +62,7 @@ public sealed class AppSettings
     {
         try
         {
-            Directory.CreateDirectory(Dir);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch { /* best effort */ }
     }

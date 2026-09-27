@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using Macrofy.App;
+using Macrofy.Core;
 using Macrofy.Core.Input;
 using Macrofy.Core.Macros;
 
@@ -12,8 +13,6 @@ namespace Macrofy.App.ViewModels;
 // thread, which has a hard latency budget for answering the hook's block/pass question.
 public sealed class MainViewModel : ObservableObject, IDisposable
 {
-    private const int MaxLogEntries = 200;
-
     private readonly IInputBackend _backend;
     private readonly DeviceNameStore _nameStore = new();
     private readonly MacroEngine _macroEngine = new();
@@ -24,9 +23,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer _drainTimer;
 
     private MacroProfile? _profile;
+    private bool _refreshingDevices;
 
     public ObservableCollection<KeyboardDevice> Keyboards { get; } = new();
-    public ObservableCollection<KeyLogEntry> KeyLog { get; } = new();
     public ObservableCollection<MacroBinding> Bindings { get; } = new();
     public ObservableCollection<MacroLayer> Layers { get; } = new();
     public ObservableCollection<string> LayerTargets { get; } = new();
@@ -62,17 +61,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _backend = backend;
         _backend.CapturedKey += OnCapturedKey;
+        _backend.DevicesChanged += OnDevicesChanged;
+        _backend.IsolationMiss += OnIsolationMiss;
+        _backend.HookStatusChanged += OnHookStatusChanged;
+        MacroExecutor.ActionFailed += OnActionFailed;
         _backend.Start();
 
         _macroEngine.ActiveLayerChanged += OnActiveLayerChanged;
         SmoothScroll.GlobalEnabled = _settings.SmoothScrolling;
 
+        // Only runs while capturing or calibrating - no 60 Hz wakeups sitting idle in the tray.
         _drainTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(16),
         };
         _drainTimer.Tick += (_, _) => Drain();
-        _drainTimer.Start();
 
         RefreshDevices();
         ApplyAutoCapture();
@@ -91,6 +94,53 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         SelectedKeyboard = device;
         IsCapturing = true;
     }
+
+    // Run an action on the UI thread. The backend raises its events from the decider thread,
+    // which must never touch the ObservableCollections or the dispatcher-bound UI directly.
+    private static void RunOnUi(Action action)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            action();
+        else
+            dispatcher.BeginInvoke(action);
+    }
+
+    // A keyboard was plugged in or removed. Refresh the list, and if auto-capture is armed and
+    // we're idle, grab the chosen keyboard now that it may have appeared.
+    private void OnDevicesChanged(object? sender, EventArgs e) => RunOnUi(() =>
+    {
+        RefreshDevices();
+        if (!_isCapturing && !_isLearning)
+            ApplyAutoCapture();
+    });
+
+    // The hook let captured keys through in some app. Tell the user which app and why, so a
+    // silent isolation failure (a game, a Store app, an elevated app) isn't a mystery.
+    private void OnIsolationMiss(object? sender, uint pid) => RunOnUi(() =>
+    {
+        var (name, kind) = ForegroundApp.Describe(pid);
+        string why = kind switch
+        {
+            AppKind.StoreApp => "it's a Microsoft Store app, which Windows won't let Macrofy hook",
+            AppKind.Elevated => "it's running as administrator - restart Macrofy as administrator to cover it",
+            _ => "it reads the keyboard directly, so capture can't block it there",
+        };
+        ShowToast($"Keys from this keyboard are still reaching {name} ({why}).");
+    });
+
+    private void OnHookStatusChanged(object? sender, EventArgs e) => RunOnUi(() =>
+    {
+        OnPropertyChanged(nameof(HookError));
+        OnPropertyChanged(nameof(HasHookIssue));
+    });
+
+    private void OnActionFailed(MacroAction action, string message) => RunOnUi(() => ShowToast(message));
+
+    // A problem that stopped capture working (missing/blocked hook DLL, hook refused). Null when
+    // all is well. Drives a warning banner on the Devices view.
+    public string? HookError => _backend.HookError;
+    public bool HasHookIssue => !string.IsNullOrEmpty(_backend.HookError);
 
     private KeyboardDevice? _selectedKeyboard;
     public KeyboardDevice? SelectedKeyboard
@@ -136,6 +186,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _isCapturing, value))
             {
                 ApplyCapture();
+                UpdateDrainTimer();
                 if (value)
                     CaptureEngaged?.Invoke(this, EventArgs.Empty);
                 else
@@ -171,7 +222,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool _captureSuspended;
     public void SetCaptureSuspended(bool suspend)
     {
-        if (suspend == _captureSuspended)
+        if (_isLearning || suspend == _captureSuspended)
             return;
         _captureSuspended = suspend;
         if (suspend)
@@ -203,22 +254,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     // ---- binding editor state ----
 
-    private int _bindVk;
-    public int BindVk
+    // The physical key currently being edited (a KeyCodes code), 0 = none.
+    private int _bindKeyCode;
+    public int BindKeyCode
     {
-        get => _bindVk;
+        get => _bindKeyCode;
         set
         {
-            if (SetProperty(ref _bindVk, value))
-            {
+            if (SetProperty(ref _bindKeyCode, value))
                 OnPropertyChanged(nameof(HasBindKey));
-                // Picking a different key starts a fresh sequence for it.
-                if (PendingSteps.Count > 0)
-                {
-                    PendingSteps.Clear();
-                    OnPropertyChanged(nameof(HasPendingSteps));
-                }
-            }
         }
     }
 
@@ -229,7 +273,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _bindKeyName, value);
     }
 
-    public bool HasBindKey => _bindVk != 0;
+    public bool HasBindKey => _bindKeyCode != 0;
 
     private MacroActionKind _bindKind = MacroActionKind.LaunchApp;
     public MacroActionKind BindKind
@@ -553,16 +597,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     // Invoked by the global hotkey - flip capture on the selected keyboard.
     public void ToggleCaptureHotkey()
     {
-        if (_selectedKeyboard is not null)
+        if (_selectedKeyboard is not null && !_isLearning)
             IsCapturing = !_isCapturing;
     }
 
     // ---- elevation ----
 
-    public bool CanElevate => !ElevationHelper.IsElevated;
-    public string ElevationStatus => ElevationHelper.IsElevated
-        ? "Macrofy is running as administrator, so it can capture elevated apps and games."
-        : "Run Macrofy as administrator to capture elevated apps and some anti-cheat games.";
+    public bool CanElevate => !ProcessElevation.IsElevated;
+    public string ElevationStatus => ProcessElevation.IsElevated
+        ? "Macrofy is running as administrator, so it can capture keys in apps that also run as administrator. Note that anything it launches inherits admin rights too."
+        : "Run Macrofy as administrator to capture keys in apps that run as administrator. It still can't capture Microsoft Store apps, or apps that read the keyboard directly (some games).";
 
     // ---- auto-capture selection (Settings tab) ----
 
@@ -588,6 +632,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         get => Keyboards.FirstOrDefault(k => k.Id == _settings.AutoCaptureDeviceId);
         set
         {
+            // While the list is rebuilding, the combo pushes a transient null - ignore it so
+            // the saved keyboard isn't wiped by a Refresh or a rename.
+            if (_refreshingDevices || value?.Id == _settings.AutoCaptureDeviceId)
+                return;
             _settings.AutoCaptureDeviceId = value?.Id;
             _settings.Save();
             OnPropertyChanged();
@@ -681,19 +729,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _isLearning, value))
             {
+                UpdateDrainTimer();
                 OnPropertyChanged(nameof(StatusText));
                 OnPropertyChanged(nameof(ShowLearnPrompt));
             }
         }
     }
 
-    private readonly HashSet<int> _learnedVks = new();
+    // Physical key codes seen during calibration.
+    private readonly HashSet<int> _learnedKeyCodes = new();
 
     public void StartLearning()
     {
         if (_selectedKeyboard is null || _isLearning)
             return;
-        _learnedVks.Clear();
+        _learnedKeyCodes.Clear();
         LearnedKeys.Clear();
         IsLearning = true;
         KeyboardLayout.Reset();
@@ -707,9 +757,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (!_isLearning)
             return;
         IsLearning = false;
-        if (_learnedVks.Count > 0 && _selectedKeyboard is not null)
+        if (_learnedKeyCodes.Count > 0 && _selectedKeyboard is not null)
         {
-            _customKeys = _learnedVks.OrderBy(v => v).ToList();
+            _customKeys = _learnedKeyCodes.OrderBy(v => v).ToList();
             _layoutKind = KeyboardLayoutKind.Custom;
             SaveLayoutForSelected();
             OnPropertyChanged(nameof(SelectedLayoutKind));
@@ -732,15 +782,26 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public void RefreshDevices()
     {
         string? previous = _selectedKeyboard?.Id;
-        Keyboards.Clear();
-        foreach (var kb in _backend.GetKeyboards(_showAllDevices))
+        // Clearing the list makes the auto-capture dropdown null its own binding; the guard
+        // stops that from erasing the saved device.
+        _refreshingDevices = true;
+        try
         {
-            var custom = _nameStore.Get(kb.Id);
-            Keyboards.Add(custom is null ? kb : kb with { DisplayName = custom });
-        }
+            Keyboards.Clear();
+            foreach (var kb in _backend.GetKeyboards(_showAllDevices))
+            {
+                var custom = _nameStore.Get(kb.Id);
+                Keyboards.Add(custom is null ? kb : kb with { DisplayName = custom });
+            }
 
-        SelectedKeyboard = Keyboards.FirstOrDefault(k => k.Id == previous)
-            ?? Keyboards.FirstOrDefault();
+            SelectedKeyboard = Keyboards.FirstOrDefault(k => k.Id == previous)
+                ?? Keyboards.FirstOrDefault();
+        }
+        finally
+        {
+            _refreshingDevices = false;
+        }
+        OnPropertyChanged(nameof(AutoCaptureDevice)); // re-point the dropdown at the saved id
     }
 
     public void RenameSelected()
@@ -763,14 +824,40 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             SelectedLayer = null;
             return;
         }
-        _profile = _profileStore.Load(_selectedKeyboard.Id, _selectedKeyboard.DisplayName);
+        MigrateLegacyDeviceData(_selectedKeyboard);
+        _profile = _profileStore.Load(_selectedKeyboard.Id, _selectedKeyboard.DisplayName, out string? backup);
+        if (backup is not null)
+            ShowToast("A damaged macro file was set aside; starting fresh for this keyboard.");
         foreach (var l in _profile.Layers)
             Layers.Add(l);
         SelectedLayer = Layers.FirstOrDefault(); // Base; refreshes Bindings + LayerTargets
     }
 
+    // Older versions keyed a device's name, layout and macros by a different id (before
+    // Bluetooth VID parsing and telling identical keyboards apart). Bring that data forward
+    // to the current id the first time we see the device, without touching the old copy.
+    private void MigrateLegacyDeviceData(KeyboardDevice device)
+    {
+        if (_profileStore.Exists(device.Id))
+            return;
+        foreach (var legacy in device.LegacyIds)
+        {
+            if (!_profileStore.Exists(legacy))
+                continue;
+            _profileStore.CopyIfMissing(legacy, device.Id);
+            _layoutStore.CopyIfMissing(legacy, device.Id);
+            _nameStore.CopyIfMissing(legacy, device.Id);
+            break;
+        }
+    }
+
     private void ApplyCapture()
     {
+        // Calibration owns the capture state (device grabbed, macros off). Don't let a focus
+        // change or the global hotkey pull the keyboard out from under it.
+        if (_isLearning)
+            return;
+
         if (_isCapturing && !_captureSuspended && _selectedKeyboard is not null && _profile is not null)
         {
             _backend.SetCapturedDevices(_selectedKeyboard.DevicePaths);
@@ -793,6 +880,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         get => _bindDelayMs;
         set => SetProperty(ref _bindDelayMs, value);
+    }
+
+    // Keep firing this key's macro while it's held down (its auto-repeat). Off by default so
+    // holding, say, a "launch app" key can't open it dozens of times.
+    private bool _repeatWhileHeld;
+    public bool RepeatWhileHeld
+    {
+        get => _repeatWhileHeld;
+        set => SetProperty(ref _repeatWhileHeld, value);
     }
 
     public bool HasPendingSteps => PendingSteps.Count > 0;
@@ -837,7 +933,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void AddBinding()
     {
-        if (_selectedKeyboard is null || _profile is null || _selectedLayer is null || _bindVk == 0)
+        if (_selectedKeyboard is null || _profile is null || _selectedLayer is null || _bindKeyCode == 0)
             return;
 
         // Assemble the macro: the steps already added, plus whatever's currently configured.
@@ -848,14 +944,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (steps.Count == 0)
             return;
 
-        var binding = new MacroBinding { VirtualKey = _bindVk, KeyName = _bindKeyName };
+        var binding = new MacroBinding
+        {
+            KeyCode = _bindKeyCode,
+            VirtualKey = KeyCodes.ToVk(_bindKeyCode),
+            KeyName = _bindKeyName,
+            RepeatWhileHeld = _repeatWhileHeld,
+        };
         if (steps.Count == 1)
             binding.Action = steps[0].Action;   // single action - keep it simple/back-compatible
         else
             binding.Steps = steps;              // a real sequence
 
         // Replace any existing binding for the same key on this layer.
-        var existing = _selectedLayer.Bindings.FirstOrDefault(b => b.VirtualKey == _bindVk);
+        var existing = _selectedLayer.Bindings.FirstOrDefault(b => b.KeyCode == _bindKeyCode);
         if (existing is not null)
         {
             _selectedLayer.Bindings.Remove(existing);
@@ -875,39 +977,43 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ShowToast("Macro saved");
     }
 
-    // Click a key on the on-screen keyboard to select it (and load its macro for editing).
-    public void PickKey(int vk)
+    // Select a physical key (clicked on the tester, or pressed on the captured keyboard) and
+    // load its macro for editing.
+    public void PickKey(int keyCode)
     {
-        BindVk = vk;
-        BindKeyName = VirtualKeyNames.Name(vk);
-        LoadBindingForEdit(vk);
+        BindKeyCode = keyCode;
+        BindKeyName = VirtualKeyNames.NameForKey(keyCode);
+        LoadBindingForEdit(keyCode);
         if (_isCapturing)
-            FlashKey(vk);
+            FlashKey(keyCode);
     }
 
     // Briefly light the key on the tester, as if it was pressed, for click feedback.
-    private void FlashKey(int vk)
+    private void FlashKey(int keyCode)
     {
-        KeyboardLayout.SetPressed(vk, true);
+        KeyboardLayout.SetPressed(keyCode, true);
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            KeyboardLayout.SetPressed(vk, false);
+            KeyboardLayout.SetPressed(keyCode, false);
         };
         timer.Start();
     }
 
-    // Pull an existing binding for this key into the form so it can be fixed in place.
-    private void LoadBindingForEdit(int vk)
+    // Pull an existing binding for this key into the form so it can be fixed in place. When the
+    // key has no macro yet, the form is left as-is (keeping a half-built sequence intact).
+    private void LoadBindingForEdit(int keyCode)
     {
-        var existing = _selectedLayer?.Bindings.FirstOrDefault(b => b.VirtualKey == vk);
-        PendingSteps.Clear();
+        var existing = _selectedLayer?.Bindings.FirstOrDefault(b => b.KeyCode == keyCode);
         if (existing is null)
         {
-            OnPropertyChanged(nameof(HasPendingSteps));
+            RepeatWhileHeld = false; // a fresh key starts with its own settings
             return;
         }
+
+        PendingSteps.Clear();
+        RepeatWhileHeld = existing.RepeatWhileHeld;
         if (existing.HasSteps)
         {
             foreach (var s in existing.Steps)
@@ -996,42 +1102,54 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _macroEngine.OnCapturedKey(e);
     }
 
+    // The drain timer only needs to run while keys can actually arrive.
+    private void UpdateDrainTimer()
+    {
+        bool active = _isCapturing || _isLearning;
+        if (active && !_drainTimer.IsEnabled)
+            _drainTimer.Start();
+        else if (!active && _drainTimer.IsEnabled)
+        {
+            _drainTimer.Stop();
+            _pending.Clear();
+        }
+    }
+
     // UI thread: drain the queue into the visuals + the binding picker.
     private void Drain()
     {
-        bool any = false;
         while (_pending.TryDequeue(out var e))
         {
-            any = true;
             if (_isLearning)
             {
-                // Calibration: record the unique keys this device emits (skip the unblockable
-                // Windows keys, which never arrive here anyway).
-                if (e.IsKeyDown && e.VirtualKey is not (0x5B or 0x5C or 0xFF) && _learnedVks.Add(e.VirtualKey))
-                    LearnedKeys.Add(VirtualKeyNames.Name(e.VirtualKey));
+                // Calibration: record the unique keys this device emits (one per physical key).
+                if (e.IsKeyDown && !e.IsRepeat && _learnedKeyCodes.Add(e.KeyCode))
+                    LearnedKeys.Add(VirtualKeyNames.NameForKey(e.KeyCode));
                 continue;
             }
-            KeyboardLayout.SetPressed(e.VirtualKey, e.IsKeyDown);
-            KeyLog.Insert(0, KeyLogEntry.From(e));
-            if (e.IsKeyDown)
+            KeyboardLayout.SetPressed(e.KeyCode, e.IsKeyDown);
+
+            // Pressing a key selects it for binding and loads its macro - but not while the
+            // form has unsaved work, so testing another key can't hijack or overwrite it.
+            bool editing = PendingSteps.Count > 0 || !string.IsNullOrWhiteSpace(_bindTarget);
+            if (e.IsKeyDown && !e.IsRepeat && !editing)
             {
-                BindVk = e.VirtualKey;
-                BindKeyName = VirtualKeyNames.Name(e.VirtualKey);
+                BindKeyCode = e.KeyCode;
+                BindKeyName = VirtualKeyNames.NameForKey(e.KeyCode);
+                LoadBindingForEdit(e.KeyCode);
             }
         }
-
-        if (any)
-            while (KeyLog.Count > MaxLogEntries)
-                KeyLog.RemoveAt(KeyLog.Count - 1);
     }
-
-    public void ClearLog() => KeyLog.Clear();
 
     public void Dispose()
     {
         _drainTimer.Stop();
         _macroEngine.ActiveLayerChanged -= OnActiveLayerChanged;
         _backend.CapturedKey -= OnCapturedKey;
+        _backend.DevicesChanged -= OnDevicesChanged;
+        _backend.IsolationMiss -= OnIsolationMiss;
+        _backend.HookStatusChanged -= OnHookStatusChanged;
+        MacroExecutor.ActionFailed -= OnActionFailed;
         _backend.Dispose();
     }
 }

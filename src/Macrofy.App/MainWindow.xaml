@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:Macrofy.App"
         mc:Ignorable="d"
         Title="Macrofy"
-        Height="780" Width="1160" MinHeight="560" MinWidth="900"
+        Height="780" Width="1160" MinHeight="640" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="None"
@@ -149,9 +149,12 @@
                     CornerRadius="12" Margin="4,0,8,0">
                 <Grid>
 
-                    <!-- DEVICES VIEW -->
-                    <Grid Margin="28,22,28,22"
-                          Visibility="{Binding IsChecked, ElementName=NavDevices, Converter={StaticResource BoolToVis}}">
+                    <!-- DEVICES VIEW. Scrolls when the window is too short to show everything,
+                         so the tester and macros stay reachable on small laptop screens, while
+                         still letting the tester fill a tall window. -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" local:SmoothScroll.Enabled="True"
+                                  Visibility="{Binding IsChecked, ElementName=NavDevices, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="28,22,28,22" MinHeight="620">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -164,6 +167,17 @@
                                 <TextBlock Text="Devices" FontSize="26" FontWeight="Bold" />
                                 <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                            Text="Pick a keyboard, toggle capture, then press its keys to test isolation." />
+                                <!-- Only visible when the keyboard hook couldn't be installed. -->
+                                <Border Margin="0,12,0,0" CornerRadius="8" Padding="12,10"
+                                        Background="#26E8A317" BorderBrush="#66E8A317" BorderThickness="1"
+                                        Visibility="{Binding HasHookIssue, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Warning24" FontSize="18" Foreground="#F0B44A"
+                                                       VerticalAlignment="Top" Margin="0,1,10,0" />
+                                        <TextBlock Text="{Binding HookError}" TextWrapping="Wrap" MaxWidth="720"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                             <ui:Button x:Name="RefreshButton" Click="RefreshButton_Click"
                                        HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -249,10 +263,11 @@
                                                 <ui:Button Content="Save name" Margin="8,0,0,0"
                                                            Click="RenameButton_Click" />
                                             </StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                <TextBlock Text="Layout" VerticalAlignment="Center" Margin="0,0,8,0"
+                                            <!-- Wraps so the Learn button is never clipped when the card is narrow. -->
+                                            <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                                <TextBlock Text="Layout" VerticalAlignment="Center" Margin="0,0,8,6"
                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                <ComboBox Width="170" ItemsSource="{Binding LayoutKinds}"
+                                                <ComboBox Width="170" Margin="0,0,8,6" ItemsSource="{Binding LayoutKinds}"
                                                           SelectedItem="{Binding SelectedLayoutKind, Mode=TwoWay}">
                                                     <ComboBox.ItemTemplate>
                                                         <DataTemplate>
@@ -260,14 +275,14 @@
                                                         </DataTemplate>
                                                     </ComboBox.ItemTemplate>
                                                 </ComboBox>
-                                                <CheckBox Content="ISO" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                <CheckBox Content="ISO" Margin="0,0,8,6" VerticalAlignment="Center"
                                                           ToolTip="European (ISO) shape: tall Enter, short left Shift with an extra key beside it"
                                                           IsChecked="{Binding IsIsoLayout, Mode=TwoWay}"
                                                           Visibility="{Binding ShowIsoToggle, Converter={StaticResource BoolToVis}}" />
-                                                <ui:Button Content="Learn keys…" Margin="8,0,0,0"
+                                                <ui:Button Content="Learn keys…" Margin="0,0,0,6"
                                                            ToolTip="Press every key on the device to build a custom layout"
                                                            Click="LearnKeysButton_Click" />
-                                            </StackPanel>
+                                            </WrapPanel>
                                         </StackPanel>
                                         <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
                                                          Focusable="False" RenderTransformOrigin="0.5,0.5"
@@ -569,6 +584,10 @@
                                                 <TextBlock Margin="2,4,0,0" FontSize="11" TextWrapping="Wrap"
                                                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                            Text="Add steps to run several actions in order, or just fill one action and hit Save." />
+
+                                                <CheckBox Margin="0,10,0,0" Content="Repeat while the key is held"
+                                                          IsChecked="{Binding RepeatWhileHeld, Mode=TwoWay}"
+                                                          ToolTip="Keep firing this macro as long as the key is held down. Off by default." />
                                             </StackPanel>
 
                                             <ui:Button Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary"
@@ -615,6 +634,7 @@
                             </Border>
                         </Grid>
                     </Grid>
+                    </ScrollViewer>
 
                     <!-- SETTINGS VIEW -->
                     <Grid Margin="28,22,28,22"
@@ -931,10 +951,10 @@
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="Driver-free &amp; game-safe" FontWeight="SemiBold" />
+                                            <TextBlock Text="Driver-free" FontWeight="SemiBold" />
                                             <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                       Text="No kernel driver and nothing installed system-wide, so it stays invisible to anti-cheat. Built on Windows Raw Input and a lightweight hook." />
+                                                       Text="Built on Windows Raw Input and a lightweight hook, with no kernel driver. The hook loads only while you're capturing, and unloads the moment you stop." />
                                         </StackPanel>
                                     </Grid>
                                 </ui:Card>

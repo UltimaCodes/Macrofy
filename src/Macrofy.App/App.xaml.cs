@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using Macrofy.Core;
 
 namespace Macrofy.App;
 
@@ -40,7 +41,7 @@ public partial class App : Application
         var settings = AppSettings.Load();
 
         // "Always run as administrator": relaunch elevated before doing anything else.
-        if (settings.AlwaysRunAsAdmin && !ElevationHelper.IsElevated && RelaunchElevated())
+        if (settings.AlwaysRunAsAdmin && !ProcessElevation.IsElevated && RelaunchElevated(e.Args, settings))
         {
             Shutdown();
             return;
@@ -87,15 +88,22 @@ public partial class App : Application
             _window.Show();
     }
 
-    private static bool RelaunchElevated()
+    // Relaunch elevated, keeping --minimized so an autostarted always-admin Macrofy still comes
+    // up quietly in the tray instead of popping its window open at every login.
+    private static bool RelaunchElevated(string[] args, AppSettings settings)
     {
+        bool minimized = args.Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase))
+                         || settings.StartMinimized;
+        var forwarded = new List<string> { "--relaunch" };
+        if (minimized)
+            forwarded.Add("--minimized");
         try
         {
             Process.Start(new ProcessStartInfo(Environment.ProcessPath!)
             {
                 UseShellExecute = true,
                 Verb = "runas",
-                Arguments = "--relaunch",
+                Arguments = string.Join(' ', forwarded),
             });
             return true;
         }

@@ -192,19 +192,19 @@ public partial class MainWindow : FluentWindow
             WindowState = WindowState.Maximized;
     }
 
-    // Fit small screens (1366x768 laptops): the default window is taller than those, and
-    // centering it put the title bar above the top edge with nothing left to grab. Shrink
-    // to the work area and, when restoring a saved spot, keep the title bar reachable.
+    // Fit small screens (1366x768 laptops): the default window centered on the primary monitor
+    // can be taller than the work area, putting the title bar above the top edge with nothing
+    // to grab. Shrink it to fit. A restored position was already validated against every monitor
+    // in RestoreWindowPlacement, so it's left alone - re-clamping it here to the PRIMARY monitor's
+    // work area is exactly what used to drag windows off a second monitor.
     private void ClampToWorkArea()
     {
-        var wa = SystemParameters.WorkArea;
+        if (WindowStartupLocation == WindowStartupLocation.Manual)
+            return;
+
+        var wa = SystemParameters.WorkArea; // primary monitor; CenterScreen centers there
         if (Width > wa.Width) Width = Math.Max(MinWidth, wa.Width - 16);
         if (Height > wa.Height) Height = Math.Max(MinHeight, wa.Height - 16);
-        if (WindowStartupLocation == WindowStartupLocation.Manual)
-        {
-            Left = Math.Min(Math.Max(Left, wa.Left), Math.Max(wa.Left, wa.Right - Width));
-            Top = Math.Min(Math.Max(Top, wa.Top), Math.Max(wa.Top, wa.Bottom - Height));
-        }
     }
 
     private void SaveWindowPlacement()
@@ -236,8 +236,8 @@ public partial class MainWindow : FluentWindow
     // Click a key on the on-screen keyboard to pick it (and load its macro to edit).
     private void KeyCap_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: ViewModels.KeyCapViewModel { Vk: int vk, Capturable: true } })
-            _viewModel.PickKey(vk);
+        if (sender is FrameworkElement { DataContext: ViewModels.KeyCapViewModel { Key: int key, Capturable: true } })
+            _viewModel.PickKey(key);
     }
 
     // ---- system tray ----
@@ -427,9 +427,6 @@ public partial class MainWindow : FluentWindow
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
         => _viewModel.RefreshDevices();
-
-    private void ClearButton_Click(object sender, RoutedEventArgs e)
-        => _viewModel.ClearLog();
 
     private void RenameButton_Click(object sender, RoutedEventArgs e)
         => _viewModel.RenameSelected();

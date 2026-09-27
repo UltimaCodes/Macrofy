@@ -1,16 +1,26 @@
 using System.Runtime.InteropServices;
+using Macrofy.Core.Input;
 
 namespace Macrofy.App;
 
-// Friendly names for virtual-key codes. Named keys come from the table; punctuation/OEM
-// keys ask Windows what character they type under the active keyboard layout, so a UK or
-// German keyboard shows its real engravings instead of US ones. Unknown keys fall back to hex.
+// Friendly names for keys. Named keys come from the table; punctuation/OEM keys ask Windows
+// what character they type under the active keyboard layout, so a UK or German keyboard shows
+// its real engravings instead of US ones. Unknown keys fall back to hex.
 public static class VirtualKeyNames
 {
     [DllImport("user32.dll")]
     private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
     private const uint MAPVK_VK_TO_CHAR = 2;
+
+    // Name for a physical key (see KeyCodes).
+    public static string NameForKey(int keyCode)
+    {
+        if (keyCode == KeyCodes.NumpadEnter)
+            return "Numpad Enter";
+        int vk = KeyCodes.ToVk(keyCode);
+        return vk == 0 ? $"Key 0x{keyCode:X}" : Name(vk);
+    }
 
     public static string Name(int vk) => vk switch
     {
@@ -64,14 +74,15 @@ public static class VirtualKeyNames
         _ => OemOrHex(vk),
     };
 
+    // The character a key types under the current layout, or null (for named keys).
+    public static string? CharFor(int vk)
+    {
+        uint ch = MapVirtualKey((uint)vk, MAPVK_VK_TO_CHAR) & 0xFFFF;
+        return ch > 0x20 ? char.ConvertFromUtf32((int)ch) : null;
+    }
+
     // OEM keys (; ' [ ] \ , . / ` and ISO's extra key) land on different VKs and characters
     // per layout, so ask the layout instead of hardcoding. Bit 31 of the result marks dead
     // keys (e.g. ´ on German); masking to the low word keeps the character itself.
-    private static string OemOrHex(int vk)
-    {
-        uint ch = MapVirtualKey((uint)vk, MAPVK_VK_TO_CHAR) & 0xFFFF;
-        if (ch > 0x20)
-            return char.ConvertFromUtf32((int)ch);
-        return $"VK 0x{vk:X2}";
-    }
+    private static string OemOrHex(int vk) => CharFor(vk) ?? $"VK 0x{vk:X2}";
 }

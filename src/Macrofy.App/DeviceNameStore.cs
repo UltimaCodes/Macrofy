@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Macrofy.Core.IO;
 
 namespace Macrofy.App;
 
@@ -29,6 +30,12 @@ public sealed class DeviceNameStore
         Save();
     }
 
+    public void CopyIfMissing(string fromId, string toId)
+    {
+        if (_names.TryGetValue(fromId, out var name) && !_names.ContainsKey(toId))
+            Set(toId, name);
+    }
+
     private Dictionary<string, string> Load()
     {
         try
@@ -45,7 +52,7 @@ public sealed class DeviceNameStore
     {
         try
         {
-            File.WriteAllText(_path, JsonSerializer.Serialize(_names,
+            AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(_names,
                 new JsonSerializerOptions { WriteIndented = true }));
         }
         catch { /* best effort */ }

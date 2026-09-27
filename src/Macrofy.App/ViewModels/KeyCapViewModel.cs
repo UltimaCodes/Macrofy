@@ -1,10 +1,11 @@
 namespace Macrofy.App.ViewModels;
 
-// One key on the visual keyboard. Width is in pixels; Vk is null for layout spacers.
+// One key on the visual keyboard. Width is in pixels; Key (a KeyCodes physical key) is null
+// for layout spacers.
 public sealed class KeyCapViewModel : ObservableObject
 {
     public string Label { get; }
-    public int? Vk { get; }
+    public int? Key { get; }
     public double Width { get; }
     public bool IsSpacer { get; }
 
@@ -19,10 +20,10 @@ public sealed class KeyCapViewModel : ObservableObject
         set => SetProperty(ref _isPressed, value);
     }
 
-    public KeyCapViewModel(string label, int? vk, double width, bool isSpacer = false, bool capturable = true)
+    public KeyCapViewModel(string label, int? key, double width, bool isSpacer = false, bool capturable = true)
     {
         Label = label;
-        Vk = vk;
+        Key = key;
         Width = width;
         IsSpacer = isSpacer;
         Capturable = capturable;
