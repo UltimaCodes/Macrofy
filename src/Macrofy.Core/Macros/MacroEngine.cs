@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Macrofy.Core.Input;
 
 namespace Macrofy.Core.Macros;
@@ -10,19 +11,29 @@ namespace Macrofy.Core.Macros;
 public sealed class MacroEngine
 {
     private readonly object _gate = new();
+    private readonly Action<MacroBinding> _run;
+
+    // Bindings whose macro is still running; a second press while it runs is ignored so
+    // two copies of a sequence never interleave.
+    private readonly ConcurrentDictionary<MacroBinding, byte> _running = new();
 
     private string[] _layerNames = Array.Empty<string>();
     private Dictionary<int, MacroBinding>[] _layerMaps = Array.Empty<Dictionary<int, MacroBinding>>();
 
     private int _activeLayer;       // index into _layerMaps
     private int _holdSourceLayer;   // layer to return to when a held layer key releases
-    private int _holdVk;            // vk currently holding a layer (0 = none)
+    private int _holdKey;           // key code currently holding a layer (0 = none)
 
     // Fired (on the decider thread) when the active layer changes, arg = new layer index.
     public event EventHandler<int>? ActiveLayerChanged;
 
+    // run: executes a binding's actions (the thread-pool hop is the engine's job). Tests pass
+    // a recorder; the app uses MacroExecutor.Run.
+    public MacroEngine(Action<MacroBinding>? run = null) => _run = run ?? MacroExecutor.Run;
+
     public void SetProfile(MacroProfile profile)
     {
+        int layer;
         lock (_gate)
         {
             profile.Normalize();
@@ -32,9 +43,10 @@ public sealed class MacroEngine
             // Keep the current layer if it's still in range, so live edits don't yank it.
             if (_activeLayer >= _layerMaps.Length)
                 _activeLayer = 0;
-            _holdVk = 0;
+            _holdKey = 0;
+            layer = _activeLayer;
         }
-        ActiveLayerChanged?.Invoke(this, _activeLayer);
+        ActiveLayerChanged?.Invoke(this, layer);
     }
 
     public void Clear()
@@ -44,7 +56,7 @@ public sealed class MacroEngine
             _layerNames = Array.Empty<string>();
             _layerMaps = Array.Empty<Dictionary<int, MacroBinding>>();
             _activeLayer = 0;
-            _holdVk = 0;
+            _holdKey = 0;
         }
         ActiveLayerChanged?.Invoke(this, 0);
     }
@@ -53,8 +65,8 @@ public sealed class MacroEngine
     {
         var map = new Dictionary<int, MacroBinding>();
         foreach (var b in layer.Bindings)
-            if (!b.IsEmpty)
-                map[b.VirtualKey] = b;
+            if (!b.IsEmpty && b.KeyCode != 0)
+                map[b.KeyCode] = b;
         return map;
     }
 
@@ -73,46 +85,53 @@ public sealed class MacroEngine
             if (!e.IsKeyDown)
             {
                 // Releasing the key that engaged a momentary layer returns us to where we were.
-                if (_holdVk != 0 && e.VirtualKey == _holdVk)
+                if (_holdKey != 0 && e.KeyCode == _holdKey)
                 {
                     _activeLayer = _holdSourceLayer;
-                    _holdVk = 0;
+                    _holdKey = 0;
                     layerChanged = true;
                     newLayer = _activeLayer;
                 }
             }
             else
             {
-                var binding = Resolve(e.VirtualKey);
+                var binding = Resolve(e.KeyCode);
                 switch (binding?.Action.Kind)
                 {
-                    case MacroActionKind.LayerHold:
+                    case MacroActionKind.LayerHold when !binding!.HasSteps:
                     {
+                        if (e.IsRepeat)
+                            break;
                         int target = IndexOfLayer(binding.Action.Target);
                         if (target >= 0 && target != _activeLayer)
                         {
                             _holdSourceLayer = _activeLayer;
-                            _holdVk = e.VirtualKey;
+                            _holdKey = e.KeyCode;
                             _activeLayer = target;
                             layerChanged = true;
                             newLayer = target;
                         }
                         break;
                     }
-                    case MacroActionKind.LayerToggle:
+                    case MacroActionKind.LayerToggle when !binding!.HasSteps:
                     {
+                        if (e.IsRepeat)
+                            break; // holding a toggle key must not flip layers back and forth
                         int target = IndexOfLayer(binding.Action.Target);
                         if (target >= 0)
                         {
                             _activeLayer = _activeLayer == target ? 0 : target;
-                            _holdVk = 0;
+                            _holdKey = 0;
                             layerChanged = true;
                             newLayer = _activeLayer;
                         }
                         break;
                     }
                     default:
-                        toRun = binding; // a normal single action or a multi-step sequence
+                        // A normal action or a sequence. Auto-repeat only re-fires it when the
+                        // binding asks for that.
+                        if (binding is not null && (!e.IsRepeat || binding.RepeatWhileHeld))
+                            toRun = binding;
                         break;
                 }
             }
@@ -120,16 +139,23 @@ public sealed class MacroEngine
 
         if (layerChanged)
             ActiveLayerChanged?.Invoke(this, newLayer);
-        if (toRun is not null)
-            Task.Run(() => MacroExecutor.Run(toRun));
+        if (toRun is not null && _running.TryAdd(toRun, 0))
+        {
+            var binding = toRun;
+            Task.Run(() =>
+            {
+                try { _run(binding); }
+                finally { _running.TryRemove(binding, out _); }
+            });
+        }
     }
 
     // Active layer first; if the key isn't defined there, fall through to Base (transparent).
-    private MacroBinding? Resolve(int vk)
+    private MacroBinding? Resolve(int keyCode)
     {
-        if (_layerMaps[_activeLayer].TryGetValue(vk, out var b))
+        if (_layerMaps[_activeLayer].TryGetValue(keyCode, out var b))
             return b;
-        if (_activeLayer != 0 && _layerMaps[0].TryGetValue(vk, out var baseB))
+        if (_activeLayer != 0 && _layerMaps[0].TryGetValue(keyCode, out var baseB))
             return baseB;
         return null;
     }

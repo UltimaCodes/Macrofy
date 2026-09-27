@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Macrofy.Core.Input;
 
 namespace Macrofy.Core.Macros;
 
@@ -23,11 +24,8 @@ public sealed class MacroAction
     public string Target { get; set; } = string.Empty;
     public string Arguments { get; set; } = string.Empty;
 
-    // Layer switches have no "target string" to fill in beyond the layer name, which is
-    // chosen separately - so they're never "empty" the way a blank app path would be.
-    public bool IsEmpty => Kind == MacroActionKind.None
-        || (Kind is not (MacroActionKind.LayerHold or MacroActionKind.LayerToggle)
-            && string.IsNullOrWhiteSpace(Target));
+    // Every kind needs its target, including layer switches (the layer's name).
+    public bool IsEmpty => Kind == MacroActionKind.None || string.IsNullOrWhiteSpace(Target);
 
     public string Description => Kind switch
     {
@@ -65,16 +63,23 @@ public sealed class MacroStep
 // One captured key bound to an action - or, when Steps is non-empty, to a sequence of them.
 public sealed class MacroBinding
 {
+    // The physical key (see KeyCodes). Older profiles only had VirtualKey; Normalize fills
+    // this in from it.
+    public int KeyCode { get; set; }
+
+    // The key's virtual key when it was bound, kept for display and for older versions.
     public int VirtualKey { get; set; }
     public string KeyName { get; set; } = string.Empty;
 
-    // The single action. Used when Steps is empty (the common case today).
+    // The single action. Used when Steps is empty (the common case).
     public MacroAction Action { get; set; } = new();
 
-    // Multi-step sequence. When non-empty it runs instead of Action. Empty by default so
-    // existing single-action bindings and saved profiles are completely unaffected. The
-    // authoring UI is a later phase; the model/engine/executor already honor it.
+    // Multi-step sequence. When non-empty it runs instead of Action.
     public List<MacroStep> Steps { get; set; } = new();
+
+    // Keep firing while the key is held (the keyboard's auto-repeat), e.g. for volume.
+    // Off by default so holding a key can't launch an app thirty times.
+    public bool RepeatWhileHeld { get; set; }
 
     public bool HasSteps => Steps.Count > 0;
 
@@ -109,13 +114,53 @@ public sealed class MacroProfile
 
     public MacroLayer BaseLayer => Layers[0];
 
-    // Guarantee the invariant "at least one layer", migrating any legacy bindings into it.
+    // Make a loaded or imported profile safe to use: JSON can set any list or object to null
+    // (a hand-edited or damaged file), and older files need migrating. Idempotent.
     public void Normalize()
     {
+        DeviceId ??= string.Empty;
+        DeviceName ??= string.Empty;
+        Layers ??= new List<MacroLayer>();
+        Layers.RemoveAll(l => l is null);
         if (Layers.Count == 0)
             Layers.Add(new MacroLayer { Name = "Base", Bindings = LegacyBindings ?? new List<MacroBinding>() });
         LegacyBindings = null;
+
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var layer in Layers)
+        {
+            layer.Name = string.IsNullOrWhiteSpace(layer.Name) ? "Layer" : layer.Name.Trim();
+            string unique = layer.Name;
+            for (int n = 2; !names.Add(unique); n++)
+                unique = $"{layer.Name} ({n})";
+            layer.Name = unique;
+
+            layer.Bindings ??= new List<MacroBinding>();
+            layer.Bindings.RemoveAll(b => b is null);
+            foreach (var b in layer.Bindings)
+            {
+                b.KeyName ??= string.Empty;
+                b.Action = Clean(b.Action);
+                b.Steps ??= new List<MacroStep>();
+                b.Steps.RemoveAll(s => s is null);
+                foreach (var s in b.Steps)
+                {
+                    s.Action = Clean(s.Action);
+                    s.DelayMsAfter = Math.Max(0, s.DelayMsAfter);
+                }
+            }
+        }
+
         MigrateModifierKeys();
+        MigrateToKeyCodes();
+    }
+
+    private static MacroAction Clean(MacroAction? action)
+    {
+        action ??= new MacroAction();
+        action.Target ??= string.Empty;
+        action.Arguments ??= string.Empty;
+        return action;
     }
 
     // Older builds saved modifier bindings under the generic VKs (0x10/0x11/0x12) because
@@ -130,6 +175,8 @@ public sealed class MacroProfile
             for (int i = layer.Bindings.Count - 1; i >= 0; i--)
             {
                 var b = layer.Bindings[i];
+                if (b.KeyCode != 0)
+                    continue;
                 (int vk, string name) = b.VirtualKey switch
                 {
                     0x10 => (0xA0, "Left Shift"),
@@ -139,13 +186,31 @@ public sealed class MacroProfile
                 };
                 if (vk == 0)
                     continue;
-                if (layer.Bindings.Any(other => other.VirtualKey == vk))
+                if (layer.Bindings.Any(other => other.KeyCode == 0 && other.VirtualKey == vk))
                 {
                     layer.Bindings.RemoveAt(i);
                     continue;
                 }
                 b.VirtualKey = vk;
                 b.KeyName = name;
+            }
+        }
+    }
+
+    // Profiles from before physical-key binding only have a VirtualKey. Two old bindings can
+    // land on one physical key (rare); the first one keeps it.
+    private void MigrateToKeyCodes()
+    {
+        foreach (var layer in Layers)
+        {
+            var seen = new HashSet<int>();
+            for (int i = 0; i < layer.Bindings.Count; i++)
+            {
+                var b = layer.Bindings[i];
+                if (b.KeyCode == 0 && b.VirtualKey != 0)
+                    b.KeyCode = KeyCodes.FromVk(b.VirtualKey);
+                if (b.KeyCode == 0 || !seen.Add(b.KeyCode))
+                    layer.Bindings.RemoveAt(i--);
             }
         }
     }
