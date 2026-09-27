@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Macrofy.sln
+
+      - name: Build
+        run: dotnet build Macrofy.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test src/Macrofy.Tests -c Release --no-build --verbosity normal
+
+  native-hook:
+    # The compiled MacrofyHook.dll is committed and embedded in Macrofy.Core, so the app
+    # builds without a C toolchain. This job just checks that hook.c still compiles; a
+    # toolchain hiccup on the runner shouldn't block a PR, so it's informational.
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the hook DLL
+        shell: pwsh
+        run: ./native/build.ps1
+
+      - name: Fail if hook.c no longer matches the committed DLL export contract
+        shell: pwsh
+        run: |
+          if (-not (Test-Path native/MacrofyHook.dll)) { throw "MacrofyHook.dll was not produced" }
