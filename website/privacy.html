@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy · Macrofy</title>
+  <meta name="description" content="What Macrofy does with your data: it stores your macros on your PC and sends nothing anywhere, apart from an optional update check." />
+  <meta name="theme-color" content="#0a0e16" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <nav class="nav is-scrolled" aria-label="Main">
+    <a class="nav__brand" href="index.html"><img src="assets/img/logo.svg" alt="" width="30" height="30" />Macrofy</a>
+    <a class="btn btn--ghost btn--sm" href="index.html" style="padding:0 16px">Back to home</a>
+  </nav>
+
+  <main class="legal narrow">
+    <h1>Privacy</h1>
+    <p>Last updated October 2026.</p>
+    <p>Short version: Macrofy runs on your PC, keeps your macros on your PC, and doesn't send anything about you or your typing anywhere.</p>
+
+    <h2>What Macrofy sees</h2>
+    <p>To turn one keyboard into a macro pad, Macrofy has to know which keyboard each key press comes from. While you're capturing a keyboard, it checks each key press as it happens: if it came from the captured keyboard, Macrofy stops it from typing and runs the macro you set up for that key. Key presses aren't recorded, logged or stored.</p>
+
+    <h2>What Macrofy stores</h2>
+    <p>Your profiles, keyboard names, layouts and settings are saved as files in <code>%AppData%\Macrofy</code> on your PC. If Macrofy crashes, it writes the error to <code>log.txt</code> in the same folder so you can share it if you choose. Nothing is uploaded.</p>
+
+    <h2>What Macrofy sends</h2>
+    <p>Only one thing: when it starts, an installed copy asks GitHub whether a newer version of Macrofy exists, and downloads it if you choose to update. GitHub sees that request like any web request (including your IP address); see <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. You can turn this off in Settings &gt; Updates.</p>
+    <p>There is no analytics, tracking or account.</p>
+
+    <h2>This website</h2>
+    <p>This site doesn't use cookies or analytics. Fonts are loaded from Google Fonts and scripts from the jsDelivr CDN, which see standard request information. Downloads come from GitHub.</p>
+
+    <h2>Questions</h2>
+    <p>Open an issue on <a href="https://github.com/UltimaCodes/Macrofy/issues">GitHub</a>. The source code is public, so you can also check all of this yourself.</p>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <a class="nav__brand" href="index.html"><img src="assets/img/logo.svg" alt="" width="26" height="26" />Macrofy</a>
+      <span>© 2026 Macrofy · Made by Ryaan Aaqil</span>
+    </div>
+  </footer>
+</body>
+</html>
