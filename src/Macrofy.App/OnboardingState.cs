@@ -1,14 +1,12 @@
 using System.IO;
+using Macrofy.Core;
 
 namespace Macrofy.App;
 
-// Tracks one-time UI hints. Each flag is a tiny marker file in AppData so it survives
-// restarts; best-effort (a failed read/write just means the hint may show again).
+// Tracks one-time UI hints. Each flag is a tiny marker file in the data folder so it
+// survives restarts; best-effort (a failed read/write just means the hint may show again).
 public static class OnboardingState
 {
-    private static readonly string Dir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Macrofy");
-
     public static bool HasSeen(string flag)
     {
         try { return File.Exists(MarkerPath(flag)); }
@@ -17,13 +15,9 @@ public static class OnboardingState
 
     public static void MarkSeen(string flag)
     {
-        try
-        {
-            Directory.CreateDirectory(Dir);
-            File.WriteAllText(MarkerPath(flag), DateTime.UtcNow.ToString("o"));
-        }
+        try { File.WriteAllText(MarkerPath(flag), DateTime.UtcNow.ToString("o")); }
         catch { /* best effort */ }
     }
 
-    private static string MarkerPath(string flag) => Path.Combine(Dir, $"{flag}.seen");
+    private static string MarkerPath(string flag) => AppPaths.PathFor($"{flag}.seen");
 }

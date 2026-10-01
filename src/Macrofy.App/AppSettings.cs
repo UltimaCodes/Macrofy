@@ -1,16 +1,15 @@
 using System.IO;
 using System.Text.Json;
+using Macrofy.Core;
 using Macrofy.Core.IO;
 
 namespace Macrofy.App;
 
 // Small persisted app preferences (separate from device names / macro profiles).
-// Stored at %AppData%/Macrofy/settings.json; best-effort load/save.
+// Stored at <data>/settings.json; best-effort load/save.
 public sealed class AppSettings
 {
-    private static readonly string Dir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Macrofy");
-    private static readonly string FilePath = Path.Combine(Dir, "settings.json");
+    private static readonly string FilePath = AppPaths.PathFor("settings.json");
 
     // When true, closing the window hides Macrofy to the tray; when false, closing quits.
     public bool MinimizeToTrayOnClose { get; set; } = true;
@@ -39,6 +38,12 @@ public sealed class AppSettings
 
     // Always relaunch elevated on startup (prompts for admin every launch).
     public bool AlwaysRunAsAdmin { get; set; }
+
+    // List devices that don't look like keyboards too (some macro pads report oddly).
+    public bool ShowAllDevices { get; set; }
+
+    // Look for a new version at startup (installed copies only).
+    public bool CheckForUpdates { get; set; } = true;
 
     // Remembered window placement.
     public double WindowWidth { get; set; }

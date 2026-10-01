@@ -25,6 +25,50 @@ public sealed class NonEmptyToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// A physical key code (KeyCodes) to its name on the current layout ("F5", "Numpad 7").
+public sealed class KeyNameConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is int code && code != 0 ? VirtualKeyNames.NameForKey(code) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+// A binding to the short label shown on its key.
+public sealed class BindingLabelConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is MacroBinding b ? BindingLabels.For(b) : string.Empty;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+// A binding (or a single action) to its icon.
+public sealed class ActionIconConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value switch
+    {
+        MacroBinding b => ActionUi.IconFor(b),
+        MacroAction a => ActionUi.IconFor(a),
+        _ => Wpf.Ui.Controls.SymbolRegular.Empty,
+    };
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+// Visible when the bound string has text.
+public sealed class TextToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is string s && s.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // Visible when the bound bool is false (inverse of the built-in).
 public sealed class InverseBoolToVisibilityConverter : IValueConverter
 {

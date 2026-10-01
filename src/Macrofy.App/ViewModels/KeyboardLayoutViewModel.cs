@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Macrofy.App;
 using Macrofy.Core.Input;
+using Macrofy.Core.Macros;
 
 namespace Macrofy.App.ViewModels;
 
 // The on-screen keyboard. The shape depends on the chosen layout (Full/TKL/75/65/60/Numpad,
-// ANSI or ISO) or a Custom set of learned keys. Rows feed the UI; SetPressed lights keys live.
+// ANSI or ISO) or a Custom set of learned keys. Rows feed the UI; SetPressed lights keys live
+// and ShowBindings puts each bound key's action on its keycap.
 //
 // Keys are identified by physical key code (see KeyCodes), the same thing macros bind to.
 // Alphanumeric keys are placed by scan code and the active keyboard layout decides what to
@@ -15,8 +17,8 @@ namespace Macrofy.App.ViewModels;
 // key isn't labelled ~.
 public sealed class KeyboardLayoutViewModel
 {
-    private const double Unit = 30;       // px per 1u key
-    public double KeyHeight => 30;
+    private const double Unit = 54;       // px per 1u key (the Viewbox scales the whole board)
+    private const double KeyHeight = 54;
 
     [DllImport("user32.dll")]
     private static extern uint MapVirtualKey(uint uCode, uint uMapType);
@@ -27,6 +29,11 @@ public sealed class KeyboardLayoutViewModel
     private readonly Dictionary<int, List<KeyCapViewModel>> _byKey = new();
 
     public IReadOnlyList<IReadOnlyList<KeyCapViewModel>> Rows => _rows;
+
+    // Every physical key this layout draws.
+    public IReadOnlyCollection<int> Keys => _byKey.Keys;
+
+    public bool IsEmpty => _byKey.Count == 0;
 
     public KeyboardLayoutViewModel(KeyboardLayoutKind kind = KeyboardLayoutKind.Full,
                                    IReadOnlyList<int>? customKeys = null,
@@ -47,13 +54,45 @@ public sealed class KeyboardLayoutViewModel
                 cap.IsPressed = false;
     }
 
+    public void Select(int keyCode)
+    {
+        foreach (var (code, caps) in _byKey)
+            foreach (var cap in caps)
+                cap.IsSelected = code == keyCode;
+    }
+
+    // Put each binding's icon and label on its key. Bindings from the Base layer show through
+    // (dimmed) on another layer wherever that layer doesn't define the key itself, which is
+    // exactly how the engine resolves them.
+    public void ShowBindings(IEnumerable<MacroBinding> layer, IEnumerable<MacroBinding>? inheritedFromBase)
+    {
+        foreach (var caps in _byKey.Values)
+            foreach (var cap in caps)
+                cap.ClearBinding();
+        if (inheritedFromBase is not null)
+            foreach (var b in inheritedFromBase)
+                Show(b, inherited: true);
+        foreach (var b in layer)
+            Show(b, inherited: false);
+    }
+
+    private void Show(MacroBinding binding, bool inherited)
+    {
+        if (binding.IsEmpty || !_byKey.TryGetValue(binding.KeyCode, out var caps))
+            return;
+        string label = BindingLabels.For(binding);
+        var icon = ActionUi.IconFor(binding);
+        foreach (var cap in caps)
+            cap.ShowBinding(label, icon, inherited);
+    }
+
     private List<KeyCapViewModel> _current = null!;
 
     private void Row() => _rows.Add(_current = new List<KeyCapViewModel>());
 
     private void Add(string label, int keyCode, double u, bool capturable = true)
     {
-        var cap = new KeyCapViewModel(label, keyCode, u * Unit, capturable: capturable);
+        var cap = new KeyCapViewModel(label, keyCode, u * Unit, KeyHeight, capturable: capturable);
         _current.Add(cap);
         if (!_byKey.TryGetValue(keyCode, out var list))
             _byKey[keyCode] = list = new List<KeyCapViewModel>();
@@ -75,7 +114,7 @@ public sealed class KeyboardLayoutViewModel
         Add(label, scan, u);
     }
 
-    private void Sp(double u) => _current.Add(new KeyCapViewModel(string.Empty, null, u * Unit, isSpacer: true));
+    private void Sp(double u) => _current.Add(new KeyCapViewModel(string.Empty, null, u * Unit, KeyHeight, isSpacer: true));
 
     private void Build(KeyboardLayoutKind kind, IReadOnlyList<int>? customKeys, bool iso)
     {

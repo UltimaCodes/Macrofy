@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Macrofy.Core;
 using Macrofy.Core.Input;
 using Macrofy.Core.IO;
 
@@ -57,10 +58,7 @@ public sealed class DeviceLayoutStore
 
     public DeviceLayoutStore()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Macrofy");
-        Directory.CreateDirectory(dir);
-        _path = Path.Combine(dir, "layouts.json");
+        _path = AppPaths.PathFor("layouts.json");
         _map = Load();
     }
 

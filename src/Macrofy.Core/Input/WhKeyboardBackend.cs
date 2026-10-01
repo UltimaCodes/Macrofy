@@ -62,6 +62,12 @@ public sealed class WhKeyboardBackend : IInputBackend
     public event EventHandler? DevicesChanged;
     public event EventHandler<uint>? IsolationMiss;
     public event EventHandler? HookStatusChanged;
+    public event EventHandler<string>? DeviceIdentified;
+
+    private volatile bool _identifying;
+
+    public void BeginIdentify() => _identifying = true;
+    public void CancelIdentify() => _identifying = false;
 
     private volatile bool _hookInstalled;
     public bool IsHookInstalled => _hookInstalled;
@@ -350,6 +356,7 @@ public sealed class WhKeyboardBackend : IInputBackend
 
         nint buffer = Marshal.AllocHGlobal((int)size);
         DeviceKeyEvent? surfaced = null;
+        nint identified = nint.Zero;
         try
         {
             if (GetRawInputData(hRawInput, RID_INPUT, buffer, ref size, headerSize) != size)
@@ -386,6 +393,12 @@ public sealed class WhKeyboardBackend : IInputBackend
 
                 if (captured && !IsExcluded(vk))
                     surfaced = new DeviceKeyEvent(keyCode, vk, isDown, isRepeat);
+
+                if (_identifying && isDown && !isRepeat && device != nint.Zero)
+                {
+                    _identifying = false;
+                    identified = device;
+                }
             }
         }
         finally
@@ -396,6 +409,8 @@ public sealed class WhKeyboardBackend : IInputBackend
         ReportMisses();
         if (surfaced is { } e)
             CapturedKey?.Invoke(this, e);
+        if (identified != nint.Zero && RawInputDeviceEnumerator.GetDeviceName(identified) is { Length: > 0 } path)
+            DeviceIdentified?.Invoke(this, path);
     }
 
     private static uint ForegroundPid()

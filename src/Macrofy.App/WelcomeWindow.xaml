@@ -40,7 +40,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   Text="on the Devices tab, pick the keyboard you want and flip on Capture. it stops typing and becomes yours." />
+                                   Text="on the Keyboards tab, pick the keyboard you want (or hit &quot;Pick by pressing a key&quot; and press any key on it), then turn on Capture. it stops typing and becomes yours." />
                     </Grid>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -54,7 +54,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   Text="press a key on it, or click one on the on-screen keyboard, to pick it." />
+                                   Text="click a key on the on-screen keyboard, or press it on that keyboard, to pick it." />
                     </Grid>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -68,7 +68,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Margin="12,2,0,0" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   Text="pick what it should do, hit Save, and that key runs your macro. that's it." />
+                                   Text="pick what it should do and hit Save. or grab a ready-made profile for OBS, Photoshop or VS Code from the Profiles tab." />
                     </Grid>
                 </StackPanel>
 

@@ -41,6 +41,24 @@ public static partial class DeviceNameResolver
         return u.Contains("RDP_KBD") || u.Contains("ROOT#") || u.Contains("VIRTUAL");
     }
 
+    // How a keyboard is connected, read from its device path. Bluetooth HID shows up with the
+    // HID-over-Bluetooth service ids (classic and LE); laptop and PS/2 keyboards come through
+    // ACPI/i8042. Wireless dongles are USB devices, so they read as USB.
+    public static ConnectionKind Connection(string path)
+    {
+        var u = path.ToUpperInvariant();
+        if (IsVirtual(path))
+            return ConnectionKind.Virtual;
+        if (u.Contains("{00001124-0000-1000-8000-00805F9B34FB}") || u.Contains("{00001812-0000-1000-8000-00805F9B34FB}")
+            || u.Contains("BTHENUM") || u.Contains("BTHLE"))
+            return ConnectionKind.Bluetooth;
+        if (u.Contains("ACPI") || u.Contains("PNP03") || u.Contains("I8042"))
+            return ConnectionKind.BuiltIn;
+        if (u.Contains("VID_"))
+            return ConnectionKind.Usb;
+        return ConnectionKind.Unknown;
+    }
+
     // Name for one physical device (no per-collection suffix).
     public static string ResolveGroup(string path)
     {

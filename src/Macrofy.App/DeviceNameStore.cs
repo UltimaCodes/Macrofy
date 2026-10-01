@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Macrofy.Core;
 using Macrofy.Core.IO;
 
 namespace Macrofy.App;
@@ -12,10 +13,7 @@ public sealed class DeviceNameStore
 
     public DeviceNameStore()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Macrofy");
-        Directory.CreateDirectory(dir);
-        _path = Path.Combine(dir, "devices.json");
+        _path = AppPaths.PathFor("devices.json");
         _names = Load();
     }
 

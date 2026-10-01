@@ -23,6 +23,13 @@ public interface IInputBackend : IDisposable
     // The hook was installed, removed, or failed to install (backend thread).
     event EventHandler? HookStatusChanged;
 
+    // "Press a key on the keyboard you want": after BeginIdentify, the next fresh key press on
+    // any keyboard raises DeviceIdentified once with that keyboard's device path (backend
+    // thread). Nothing is blocked; it only reports where the key came from.
+    void BeginIdentify();
+    void CancelIdentify();
+    event EventHandler<string>? DeviceIdentified;
+
     bool IsHookInstalled { get; }
 
     // Why the hook couldn't be installed, or null.

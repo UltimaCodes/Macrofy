@@ -11,10 +11,13 @@
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Palette: Spotify-style near-black with floating panels; teal accent (ours). -->
+            <!-- Palette: near-black with floating panels; teal accent. ThemeManager swaps the
+                 Rm* brushes for light mode. -->
             <Color x:Key="RmAccentColor">#2DD4BF</Color>
             <SolidColorBrush x:Key="RmAccentBrush" Color="{StaticResource RmAccentColor}" />
             <SolidColorBrush x:Key="RmAccentMutedBrush" Color="#262DD4BF" />
+            <SolidColorBrush x:Key="RmOnAccentBrush" Color="#06201C" />
+            <SolidColorBrush x:Key="RmWarningBrush" Color="#F0B44A" />
             <SolidColorBrush x:Key="RmWindowBrush" Color="#0A0A0B" />
             <SolidColorBrush x:Key="RmSidebarBrush" Color="#000000" />
             <SolidColorBrush x:Key="RmPanelBrush" Color="#121316" />
@@ -23,6 +26,84 @@
             <SolidColorBrush x:Key="RmHoverBrush" Color="#14FFFFFF" />
             <SolidColorBrush x:Key="RmSubtleBrush" Color="#14FFFFFF" />
             <SolidColorBrush x:Key="RmIconBgBrush" Color="#1FFFFFFF" />
+            <SolidColorBrush x:Key="RmKeyBrush" Color="#26282F" />
+            <SolidColorBrush x:Key="RmKeyBorderBrush" Color="#363942" />
+            <SolidColorBrush x:Key="RmKeyShadowBrush" Color="#0D0E11" />
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <local:EmptyToVisibilityConverter x:Key="EmptyToVis" />
+            <local:NonEmptyToVisibilityConverter x:Key="NonEmptyToVis" />
+            <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+            <local:TextToVisibilityConverter x:Key="TextToVis" />
+            <local:KeyNameConverter x:Key="KeyName" />
+            <local:BindingLabelConverter x:Key="BindingLabel" />
+            <local:ActionIconConverter x:Key="ActionIcon" />
+            <local:LayoutKindToLabelConverter x:Key="LayoutKindLabel" />
+            <local:AppThemeToLabelConverter x:Key="ThemeLabel" />
+
+            <!-- Text -->
+            <Style x:Key="PageTitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="PageSubtitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Margin" Value="0,4,0,0" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <Style x:Key="SectionLabel" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+            </Style>
+            <Style x:Key="Muted" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            </Style>
+
+            <!-- A floating card -->
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource RmCardBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource RmCardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="20" />
+            </Style>
+
+            <!-- Rounded pill button (keyboard and profile pickers, small actions) -->
+            <Style x:Key="PillButton" TargetType="Button">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="Background" Value="{DynamicResource RmSubtleBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource RmCardBorderBrush}" />
+                <Setter Property="Padding" Value="12,7" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                    CornerRadius="18" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentMutedBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
 
             <!-- Left-rail navigation item (pill) -->
             <Style x:Key="NavItemStyle" TargetType="RadioButton">
@@ -57,24 +138,23 @@
 
             <!-- Layer selector pill -->
             <Style x:Key="LayerChipStyle" TargetType="ListBoxItem">
-                <Setter Property="Margin" Value="0,0,6,6" />
+                <Setter Property="Margin" Value="0,0,6,0" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
-                            <Border x:Name="Bd" CornerRadius="13" Padding="12,5"
-                                    Background="{DynamicResource RmCardBrush}"
-                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1">
+                            <Border x:Name="Bd" CornerRadius="14" Padding="13,6"
+                                    Background="{DynamicResource RmSubtleBrush}"
+                                    BorderBrush="Transparent" BorderThickness="1">
                                 <ContentPresenter VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#3C434F" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmCardBorderBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentBrush}" />
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
-                                    <Setter Property="Foreground" Value="#06201C" />
+                                    <Setter Property="Foreground" Value="{DynamicResource RmOnAccentBrush}" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -83,32 +163,37 @@
                 </Setter>
             </Style>
 
-            <!-- Device list card -->
-            <Style x:Key="DeviceCardStyle" TargetType="ListBoxItem">
-                <Setter Property="Margin" Value="0,0,0,8" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <!-- One choice in the action picker -->
+            <Style x:Key="ActionCardStyle" TargetType="ListBoxItem">
+                <Setter Property="Margin" Value="0,0,6,6" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
-                            <Border x:Name="Bd" Background="{DynamicResource RmCardBrush}"
-                                    BorderBrush="{DynamicResource RmCardBorderBrush}" BorderThickness="1"
-                                    CornerRadius="10" Padding="14,12">
+                            <Border x:Name="Bd" CornerRadius="10" Padding="8,9"
+                                    Background="{DynamicResource RmSubtleBrush}"
+                                    BorderBrush="Transparent" BorderThickness="1.5">
                                 <ContentPresenter />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#3C434F" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmCardBorderBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
                                     <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RmAccentMutedBrush}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource RmAccentBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
+            </Style>
+
+            <!-- A settings row: title + description on the left, a control on the right -->
+            <Style x:Key="SettingTitle" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

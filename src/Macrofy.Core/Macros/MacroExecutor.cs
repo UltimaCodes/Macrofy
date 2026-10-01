@@ -137,8 +137,25 @@ public static class MacroExecutor
 
     private static void SendHotkey(string combo)
     {
-        combo = combo.Trim();
-        // "Ctrl++" means Ctrl and the plus key; plain splitting would lose the key.
+        if (!TryParseHotkey(combo, out var mods, out ushort key, out string? error))
+            throw new ArgumentException(error);
+
+        var inputs = new List<INPUT>();
+        foreach (var m in mods) inputs.Add(Key(m, up: false));
+        if (key != 0) AddTap(inputs, key);
+        for (int i = mods.Count - 1; i >= 0; i--) inputs.Add(Key(mods[i], up: true));
+        Send(inputs);
+    }
+
+    // Splits "Ctrl+Shift+Esc" into modifier VKs and one key VK. "Ctrl++" means Ctrl and the
+    // plus key (plain splitting on '+' would lose it). On failure, error says why.
+    public static bool TryParseHotkey(string combo, out List<ushort> modifiers, out ushort key, out string? error)
+    {
+        modifiers = new List<ushort>();
+        key = 0;
+        error = null;
+        combo = (combo ?? string.Empty).Trim();
+
         string? plusKey = null;
         if (combo.EndsWith("++", StringComparison.Ordinal))
         {
@@ -151,8 +168,6 @@ public static class MacroExecutor
             combo = string.Empty;
         }
 
-        var mods = new List<ushort>();
-        ushort key = 0;
         var tokens = combo.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         if (plusKey is not null)
             tokens.Add(plusKey);
@@ -160,25 +175,26 @@ public static class MacroExecutor
         {
             switch (p.ToLowerInvariant())
             {
-                case "ctrl" or "control": mods.Add(0x11); break;
-                case "shift": mods.Add(0x10); break;
-                case "alt": mods.Add(0x12); break;
-                case "win" or "windows": mods.Add(0x5B); break;
+                case "ctrl" or "control": modifiers.Add(0x11); break;
+                case "shift": modifiers.Add(0x10); break;
+                case "alt": modifiers.Add(0x12); break;
+                case "win" or "windows": modifiers.Add(0x5B); break;
                 default:
                     key = KeyNameToVk(p);
                     if (key == 0)
-                        throw new ArgumentException($"\"{p}\" isn't a key Macrofy knows how to send.");
+                    {
+                        error = $"\"{p}\" isn't a key Macrofy knows how to send.";
+                        return false;
+                    }
                     break;
             }
         }
-        if (key == 0 && mods.Count == 0)
-            throw new ArgumentException("The hotkey is empty.");
-
-        var inputs = new List<INPUT>();
-        foreach (var m in mods) inputs.Add(Key(m, up: false));
-        if (key != 0) AddTap(inputs, key);
-        for (int i = mods.Count - 1; i >= 0; i--) inputs.Add(Key(mods[i], up: true));
-        Send(inputs);
+        if (key == 0 && modifiers.Count == 0)
+        {
+            error = "The hotkey is empty.";
+            return false;
+        }
+        return true;
     }
 
     private static void SendMediaKey(string token)

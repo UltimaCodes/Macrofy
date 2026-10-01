@@ -6,10 +6,20 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
-  <!-- The hook DLL ships beside the exe (publish.ps1), with an embedded copy in Macrofy.Core as
-       a fallback. Tray/title-bar icons come from the exe's own ApplicationIcon. -->
+  <!-- Velopack has to run before WPF starts (it handles install/update/uninstall hooks), so
+       App.xaml is a plain page and Program.Main starts the app instead of a generated Main. -->
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
+
+  <!-- The hook DLL ships beside the exe; Macrofy.Core also embeds a copy as a fallback. -->
+  <ItemGroup>
+    <None Include="..\..\native\MacrofyHook.dll" Link="MacrofyHook.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <!-- Shown in the exe's Properties > Details, and weighed by SmartScreen/AV: a blank publisher
        reads as more suspicious. -->
@@ -20,10 +30,7 @@
     <Authors>Ryaan Aaqil</Authors>
     <Description>Turn a spare keyboard into a macro pad on Windows.</Description>
     <Copyright>Copyright © Ryaan Aaqil</Copyright>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>1.1.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
@@ -42,6 +49,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Macrofy</AssemblyName>
+    <RootNamespace>Macrofy.App</RootNamespace>
+    <StartupObject>Macrofy.App.Program</StartupObject>
     <ApplicationIcon>Assets\macrofy.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>

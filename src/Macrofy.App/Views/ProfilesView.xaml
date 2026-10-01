@@ -1,0 +1,206 @@
+<UserControl x:Class="Macrofy.App.Views.ProfilesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Macrofy.App"
+             xmlns:vm="clr-namespace:Macrofy.App.ViewModels">
+    <UserControl.Resources>
+
+        <!-- A card that lifts a little on hover -->
+        <Style x:Key="LiftCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Width" Value="320" />
+            <Setter Property="Margin" Value="0,0,16,16" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="RenderTransform">
+                <Setter.Value><TranslateTransform /></Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource RmAccentBrush}" />
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" To="-3" Duration="0:0:0.15" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" To="0" Duration="0:0:0.2" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- A key and what it does -->
+        <DataTemplate x:Key="KeyChipTemplate" DataType="{x:Type vm:KeyChip}">
+            <Border Margin="0,0,6,6" CornerRadius="7" Padding="3,3,9,3" Background="{DynamicResource RmSubtleBrush}">
+                <StackPanel Orientation="Horizontal">
+                    <Border CornerRadius="5" Padding="6,1" Background="{DynamicResource RmKeyBrush}"
+                            BorderBrush="{DynamicResource RmKeyBorderBrush}" BorderThickness="1">
+                        <TextBlock Text="{Binding Key}" FontSize="10.5" FontWeight="SemiBold" />
+                    </Border>
+                    <TextBlock Text="{Binding Label}" FontSize="11" Margin="7,0,0,0" VerticalAlignment="Center"
+                               MaxWidth="110" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A saved profile -->
+        <DataTemplate x:Key="ProfileCardTemplate" DataType="{x:Type vm:ProfileCardViewModel}">
+            <Border Style="{StaticResource LiftCard}">
+                <DockPanel LastChildFill="False">
+                    <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                        <ui:Button Content="Use on this keyboard" Appearance="Primary" HorizontalAlignment="Stretch"
+                                   Click="ApplyProfile_Click"
+                                   IsEnabled="{Binding DataContext.Profiles.CanApply, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   Visibility="{Binding IsActiveOnSelected, Converter={StaticResource InverseBoolToVis}}" />
+                        <Border CornerRadius="8" Padding="0,8" Background="{DynamicResource RmAccentMutedBrush}"
+                                Visibility="{Binding IsActiveOnSelected, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="15" Foreground="{DynamicResource RmAccentBrush}" />
+                                <TextBlock Text="In use on this keyboard" Margin="6,0,0,0" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource RmAccentBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                <StackPanel DockPanel.Dock="Top">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="42" Height="42" CornerRadius="12" Background="{Binding AccentMuted}">
+                            <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="20" Foreground="{Binding Accent}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource PillButton}" Padding="7,4" VerticalAlignment="Top"
+                                AutomationProperties.Name="{Binding Name, StringFormat='More options for {0}'}"
+                                Click="ProfileMore_Click" ToolTip="More">
+                            <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="14" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource Muted}" Margin="0,12,0,0" MaxHeight="34"
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}" />
+                    <ItemsControl ItemsSource="{Binding Preview}" ItemTemplate="{StaticResource KeyChipTemplate}" Margin="0,12,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding UsedByText}" FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A built-in template -->
+        <DataTemplate x:Key="TemplateCardTemplate" DataType="{x:Type vm:TemplateCardViewModel}">
+            <Border Style="{StaticResource LiftCard}">
+                <DockPanel LastChildFill="False">
+                    <ui:Button DockPanel.Dock="Bottom" Content="Use this template" Appearance="Primary" HorizontalAlignment="Stretch"
+                               Margin="0,12,0,0" Icon="{ui:SymbolIcon Add24}" Click="UseTemplate_Click" />
+                <StackPanel DockPanel.Dock="Top">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="42" Height="42" CornerRadius="12" Background="{Binding AccentMuted}">
+                            <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="20" Foreground="{Binding Accent}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource Muted}" Margin="0,12,0,0" />
+                    <ItemsControl ItemsSource="{Binding Preview}" ItemTemplate="{StaticResource KeyChipTemplate}" Margin="0,12,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Expander Header="How to set it up" Margin="0,6,0,0" FontSize="12">
+                        <ItemsControl ItemsSource="{Binding Setup}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="14" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="5" Height="5" VerticalAlignment="Top" Margin="0,6,0,0" HorizontalAlignment="Left"
+                                                 Fill="{DynamicResource RmAccentBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding}" Style="{StaticResource Muted}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Expander>
+                </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" local:SmoothScroll.Enabled="True">
+        <StackPanel Margin="28,22,28,24" DataContext="{Binding Profiles}">
+            <Grid>
+                <StackPanel Margin="0,0,280,0">
+                    <TextBlock Text="Profiles" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="A profile is a set of macros you can save and switch between. Any keyboard can use any profile, so keep one for gaming, one for work, one for streaming." />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <ui:Button Content="Import" Icon="{ui:SymbolIcon ArrowImport24}" Click="Import_Click" />
+                    <ui:Button Content="New profile" Appearance="Primary" Icon="{ui:SymbolIcon Add24}" Margin="8,0,0,0" Click="NewProfile_Click" />
+                </StackPanel>
+            </Grid>
+
+            <Border Margin="0,16,0,0" CornerRadius="12" Padding="14,10" Background="{DynamicResource RmSubtleBrush}">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Keyboard24" FontSize="16" Margin="0,0,10,0" Foreground="{DynamicResource RmAccentBrush}" />
+                    <TextBlock Text="{Binding ApplyHint}" Style="{StaticResource Muted}" FontSize="13" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="YOUR PROFILES" Style="{StaticResource SectionLabel}" Margin="0,26,0,12" />
+            <Border Style="{StaticResource Card}" HorizontalAlignment="Left" MaxWidth="660" Margin="0,0,0,16"
+                    Visibility="{Binding HasProfiles, Converter={StaticResource InverseBoolToVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Album24" FontSize="26" Margin="0,0,14,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                    <StackPanel>
+                        <TextBlock Text="No profiles yet" FontWeight="SemiBold" />
+                        <TextBlock Style="{StaticResource Muted}"
+                                   Text="Start from a template below, or make a macro on the Keyboards page and it'll be saved here." />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Profiles}" ItemTemplate="{StaticResource ProfileCardTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <TextBlock Text="TEMPLATES" Style="{StaticResource SectionLabel}" Margin="0,18,0,4" />
+            <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,12" FontSize="13"
+                       Text="Ready-made profiles for popular apps. Using one adds your own copy, so change anything you like." />
+            <ItemsControl ItemsSource="{Binding Templates}" ItemTemplate="{StaticResource TemplateCardTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
