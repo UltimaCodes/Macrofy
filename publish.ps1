@@ -1,32 +1,63 @@
-# Builds Macrofy as a self-contained single exe plus the native hook DLL beside it,
-# zipped for release. Users need nothing installed (the .NET runtime is bundled in).
+# Builds the Macrofy installer with Velopack.
 #
-# The DLL ships beside the exe on purpose: extracting it to %LocalAppData% at runtime
-# looks like dropper behavior to antivirus heuristics, and compressed single-file exes
-# look packed. Both were getting the build flagged. The embedded copy still exists as a
-# fallback for anyone who moves the exe on its own.
+#   .\publish.ps1                 # version from src\Macrofy.App\Macrofy.App.csproj
+#   .\publish.ps1 -Version 1.2.0
+#
+# Output in dist\:
+#   Macrofy-win-Setup.exe      the one file people download. Installs per-user (no admin),
+#                              adds Start menu + desktop shortcuts, and installs the .NET 8
+#                              desktop runtime first if the PC doesn't have it.
+#   Macrofy-win-Portable.zip   a no-install copy, for people who prefer that.
+#   *.nupkg, releases.win.json what Macrofy's auto-update reads. Upload these to the GitHub
+#                              release together with Setup.exe (the release workflow does it).
+#
+# Needs the Velopack CLI once:  dotnet tool install -g vpk
+param([string]$Version)
+
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$pubDir = Join-Path $root 'src\Macrofy.App\bin\Release\net8.0-windows\win-x64\publish'
+$project = Join-Path $root 'src\Macrofy.App\Macrofy.App.csproj'
 
-dotnet publish (Join-Path $root 'src\Macrofy.App') -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-    -p:DebugType=none
+if (-not $Version) {
+    $Version = ([xml](Get-Content $project)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+}
+if (-not $Version) { throw "No -Version given and none found in $project" }
+
+if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
+    $env:Path += ";$env:USERPROFILE\.dotnet\tools"
+}
+if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
+    throw "The Velopack CLI isn't installed. Run: dotnet tool install -g vpk"
+}
+
+$publish = Join-Path $root 'build\publish'
+if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
+
+# Framework-dependent: the installer brings the .NET runtime when it's missing, so the app
+# itself stays a few MB instead of bundling ~150 MB of runtime.
+dotnet publish $project -c Release -r win-x64 --self-contained false -o $publish `
+    -p:Version=$Version -p:DebugType=none
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+if (-not (Test-Path (Join-Path $publish 'MacrofyHook.dll'))) { throw "MacrofyHook.dll is missing from the publish output" }
 
 $dist = Join-Path $root 'dist'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
-$exe = Join-Path $dist 'Macrofy.exe'
-Copy-Item (Join-Path $pubDir 'Macrofy.App.exe') $exe -Force
-Copy-Item (Join-Path $root 'native\MacrofyHook.dll') (Join-Path $dist 'MacrofyHook.dll') -Force
 
-$zip = Join-Path $dist 'Macrofy.zip'
-if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path $exe, (Join-Path $dist 'MacrofyHook.dll') -DestinationPath $zip
-
-$hash = (Get-FileHash $zip -Algorithm SHA256).Hash
-"$hash  Macrofy.zip" | Out-File (Join-Path $dist 'Macrofy.zip.sha256') -Encoding ascii
+vpk pack `
+    --packId Macrofy `
+    --packVersion $Version `
+    --packDir $publish `
+    --mainExe Macrofy.exe `
+    --packTitle Macrofy `
+    --packAuthors "Ryaan Aaqil" `
+    --runtime win-x64 `
+    --icon (Join-Path $root 'src\Macrofy.App\Assets\macrofy.ico') `
+    --framework net8-x64-desktop `
+    --outputDir $dist
+if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
 
 Write-Host ""
-Write-Host "Built: $zip"
-Write-Host "SHA256: $hash"
+Write-Host "Built Macrofy $Version in $dist"
+Get-ChildItem $dist -File | Where-Object { $_.Name -like "Macrofy*$Version*" -or $_.Name -like 'Macrofy-win-*' -or $_.Name -like 'releases*' } |
+    ForEach-Object { Write-Host ("  {0,-40} {1,8:N1} MB" -f $_.Name, ($_.Length / 1MB)) }

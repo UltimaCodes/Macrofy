@@ -18,11 +18,14 @@ Think of it like a Stream Deck, except it's a whole keyboard and it's free.
 - **Multi-step macros.** Chain several actions on one key, with delays between them.
 - **Layers.** Hold or tap a key to flip the whole keyboard to another set of macros,
   like a Fn layer but for anything you want.
-- **Per-device profiles.** Your macros are saved per keyboard, and you can import or
-  export them as a file to back up or share.
+- **Profiles and templates.** Save sets of macros as profiles and switch between them
+  whenever you like; any keyboard can use any profile. Start from the built-in OBS
+  Studio, Photoshop or VS Code templates, and import or export profiles as files.
+- **See what every key does.** Bound keys show their action right on the on-screen
+  keyboard. Pick a keyboard by pressing any key on it.
 - **Layout presets + calibration.** Tell it whether your board is full size, TKL, 75%,
-  65%, 60% or a numpad, or hit "Learn keys" and press every key once to build a custom
-  layout for oddball devices.
+  65%, 60% or a numpad (ANSI or ISO), or hit "Learn keys" and press every key once to
+  build a custom layout for oddball devices.
 - **Lives in the tray.** Minimize to tray, start with Windows, auto-capture a chosen
   keyboard at launch, and toggle capture with a global hotkey you pick.
 - **Yours to look at.** Light or dark theme (or just follow your Windows setting), with
@@ -81,33 +84,54 @@ These come with the driver-free approach, they aren't bugs:
 
 ## Getting it
 
-Grab `Macrofy.zip` from [Releases](https://github.com/UltimaCodes/RapidMacro/releases),
-extract it, and run `Macrofy.exe`. Keep `MacrofyHook.dll` next to the exe; that's the
-capture engine.
+Download **`Macrofy-win-Setup.exe`** from the latest
+[release](https://github.com/UltimaCodes/Macrofy/releases/latest) and run it. It installs
+for your user only (no admin needed), adds Start menu and desktop shortcuts, and fetches
+the .NET 8 desktop runtime first if your PC doesn't have it. Macrofy then keeps itself up
+to date. Prefer no installer? Grab `Macrofy-win-Portable.zip` instead.
 
-Heads up: the build isn't code-signed, so the first time you run it Windows might show a
-blue "Windows protected your PC" box. That's just SmartScreen being cautious about an
-unknown publisher. Click **More info**, then **Run anyway**.
+Heads up: the build isn't code-signed yet, so the first time you run it Windows might show
+a blue "Windows protected your PC" box. That's SmartScreen being cautious about an unknown
+publisher. Click **More info**, then **Run anyway**.
+
+To remove it, uninstall Macrofy from Windows Settings > Apps like any other app. Your
+profiles stay in `%AppData%\Macrofy\` unless you delete that folder.
 
 ## How to use it
 
-1. Open Macrofy and go to **Devices**. Pick the keyboard you want to take over (each one
-   is named from its hardware info, and you can rename it).
-2. Flip on **Capture**. That keyboard is now isolated. Press one of its keys and you'll
-   see it light up in the tester and get picked in the **Macros** panel.
-3. Choose what the key should do, fill in the details, and hit **Save macro**. Want a
-   sequence? Add a few steps with delays between them.
-4. Toggle capture off (or close the app) any time to hand the keyboard back to Windows.
+1. Open Macrofy. On **Keyboards**, pick the keyboard you want to take over: use
+   **Switch keyboard**, or **Pick by pressing a key** and press any key on it.
+2. Turn on **Capture**. That keyboard is now isolated: its keys stop typing.
+3. Click a key on the on-screen keyboard (or press it on the captured keyboard), choose
+   what it should do, and hit **Save macro**. Want a sequence? Add steps with delays.
+4. Or skip the setup: open **Profiles** and use the OBS Studio, Photoshop or VS Code
+   template. The keys light up with their actions right away.
+5. Turn capture off (or close the app) any time to hand the keyboard back to Windows.
 
-To make it always-on: in **Settings**, turn on "Start with Windows" and "Auto-capture a
+To make it always-on: in **Settings**, turn on "Start with Windows" and "Capture a
 keyboard at startup", and Macrofy will quietly take over your macro keyboard every time
-you log in.
+you sign in, and again whenever it's plugged back in.
 
 ## Where your stuff lives
 
-Everything is in `%AppData%\Macrofy\`: device names, per-keyboard macro profiles,
-layouts, your settings, and a `log.txt` if anything ever crashes. There's an "Open config
-folder" button in Settings.
+Everything is in `%AppData%\Macrofy\`: your profiles (`library\`), which keyboard uses
+which profile, device names, layouts, settings, and a `log.txt` if anything ever crashes.
+There's an "Open folder" button in Settings. Nothing is sent anywhere, apart from checking
+GitHub for a new version (which you can turn off).
+
+## Releasing (for maintainers)
+
+Push a version tag and GitHub Actions does the rest: it runs the tests, builds the
+installer with [Velopack](https://velopack.io), and publishes a release with
+`Macrofy-win-Setup.exe` plus the update files installed copies look for.
+
+```
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+To build the installer locally instead: `dotnet tool install -g vpk` once, then
+`.\publish.ps1` (output in `dist\`).
 
 ## NOTE
 Virtual keyboards dont work so VMs might be janky, please try to use a physical keyboard in a non-vm environment

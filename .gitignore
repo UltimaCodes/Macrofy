@@ -492,3 +492,4 @@ $RECYCLE.BIN/
 
 # build output
 dist/
+build/

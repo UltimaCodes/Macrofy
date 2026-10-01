@@ -1,0 +1,56 @@
+name: Release
+
+# Push a version tag to ship:   git tag v1.1.0 && git push origin v1.1.0
+# This builds and tests, then publishes a GitHub release with the installer
+# (Macrofy-win-Setup.exe) and the files Macrofy's auto-update reads.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install the Velopack CLI
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      - name: Version from the tag
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          "VERSION=$v" | Out-File $env:GITHUB_ENV -Append
+
+      - name: Test
+        run: dotnet test src/Macrofy.Tests -c Release
+
+      # Downloading the previous release lets vpk build a small delta update from it.
+      # The very first release has nothing to download, which is fine.
+      - name: Fetch the previous release
+        shell: pwsh
+        continue-on-error: true
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --outputDir dist
+
+      - name: Build the installer
+        shell: pwsh
+        run: ./publish.ps1 -Version $env:VERSION
+
+      - name: Publish the release
+        shell: pwsh
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --outputDir dist
+          --tag v${{ env.VERSION }}
+          --releaseName "Macrofy ${{ env.VERSION }}"
+          --merge
+          --publish
