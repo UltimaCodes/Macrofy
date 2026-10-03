@@ -44,17 +44,23 @@ if (-not (Test-Path (Join-Path $publish 'MacrofyHook.dll'))) { throw "MacrofyHoo
 $dist = Join-Path $root 'dist'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
+# Notes for this version, if they've been written (release-notes\<version>.md). They go into
+# the update package, and the release workflow also puts them on the GitHub release page.
+$notes = Join-Path $root "release-notes\$Version.md"
+$notesArgs = if (Test-Path $notes) { @('--releaseNotes', $notes) } else { @() }
+
 vpk pack `
     --packId Macrofy `
     --packVersion $Version `
     --packDir $publish `
     --mainExe Macrofy.exe `
     --packTitle Macrofy `
-    --packAuthors "Ryaan Aaqil" `
+    --packAuthors Macrofy `
     --runtime win-x64 `
     --icon (Join-Path $root 'src\Macrofy.App\Assets\macrofy.ico') `
     --framework net8-x64-desktop `
-    --outputDir $dist
+    --outputDir $dist `
+    @notesArgs
 if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
 
 Write-Host ""

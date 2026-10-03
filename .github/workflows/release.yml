@@ -1,6 +1,6 @@
 name: Release
 
-# Push a version tag to ship:   git tag v1.1.0 && git push origin v1.1.0
+# Push a version tag to ship:   git tag v1.2.0 && git push origin v1.2.0
 # This builds and tests, then publishes a GitHub release with the installer
 # (Macrofy-win-Setup.exe) and the files Macrofy's auto-update reads.
 on:
@@ -54,3 +54,16 @@ jobs:
           --releaseName "Macrofy ${{ env.VERSION }}"
           --merge
           --publish
+
+      # Use the hand-written notes (release-notes/<version>.md) as the release page text.
+      - name: Add the release notes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $notes = "release-notes/$env:VERSION.md"
+          if (Test-Path $notes) {
+            gh release edit "v$env:VERSION" --repo "${{ github.repository }}" --notes-file $notes
+          } else {
+            Write-Host "No $notes, so the release keeps its default text."
+          }
