@@ -26,11 +26,11 @@
   <PropertyGroup>
     <Product>Macrofy</Product>
     <AssemblyTitle>Macrofy</AssemblyTitle>
-    <Company>Ryaan Aaqil</Company>
-    <Authors>Ryaan Aaqil</Authors>
+    <Company>Macrofy</Company>
+    <Authors>Macrofy</Authors>
     <Description>Turn a spare keyboard into a macro pad on Windows.</Description>
-    <Copyright>Copyright © Ryaan Aaqil</Copyright>
-    <Version>1.1.0</Version>
+    <Copyright>Copyright © Macrofy</Copyright>
+    <Version>1.2.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 

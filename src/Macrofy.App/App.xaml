@@ -73,6 +73,55 @@
                 <Setter Property="Padding" Value="20" />
             </Style>
 
+            <!-- A section that opens smoothly (see Disclosure.cs): a clickable header row with a
+                 chevron, and the content underneath. -->
+            <Style TargetType="local:Disclosure">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="local:Disclosure">
+                            <StackPanel>
+                                <ToggleButton x:Name="Toggle"
+                                              IsChecked="{Binding IsOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                              AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Cursor="Hand"
+                                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="Transparent" Padding="0,6">
+                                                <ContentPresenter />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter x:Name="HeaderText" Content="{TemplateBinding Header}"
+                                                          TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                          TextElement.FontWeight="SemiBold" />
+                                        <Path x:Name="PART_Chevron" Grid.Column="1" Data="M0,0 L4.5,4.5 L9,0" Width="9" Height="5"
+                                              Stretch="None" VerticalAlignment="Center" Margin="8,0,2,0"
+                                              Stroke="{DynamicResource TextFillColorSecondaryBrush}" StrokeThickness="1.6"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                              RenderTransformOrigin="0.5,0.5" />
+                                    </Grid>
+                                </ToggleButton>
+                                <Border x:Name="PART_Host" ClipToBounds="True">
+                                    <ContentPresenter x:Name="PART_Content" VerticalAlignment="Top" />
+                                </Border>
+                            </StackPanel>
+                            <ControlTemplate.Triggers>
+                                <Trigger SourceName="Toggle" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="HeaderText" Property="TextElement.Foreground" Value="{DynamicResource RmAccentBrush}" />
+                                    <Setter TargetName="PART_Chevron" Property="Stroke" Value="{DynamicResource RmAccentBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Rounded pill button (keyboard and profile pickers, small actions) -->
             <Style x:Key="PillButton" TargetType="Button">
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />

@@ -33,7 +33,7 @@ public class BindingLabelsTests
     [Fact]
     public void Long_text_is_shortened_onto_one_line()
     {
-        string label = Label(MacroActionKind.TypeText, "Best regards,\r\nRyaan from Macrofy");
+        string label = Label(MacroActionKind.TypeText, "Best regards,\r\nthe Macrofy team");
         Assert.DoesNotContain("\n", label);
         Assert.EndsWith("…", label);
         Assert.True(label.Length <= 14);

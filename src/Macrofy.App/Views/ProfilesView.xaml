@@ -131,8 +131,8 @@
                             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
-                    <Expander Header="How to set it up" Margin="0,6,0,0" FontSize="12">
-                        <ItemsControl ItemsSource="{Binding Setup}" Margin="0,6,0,0">
+                    <local:Disclosure Header="How to set it up" Margin="0,6,0,0" FontSize="12">
+                        <ItemsControl ItemsSource="{Binding Setup}" Margin="0,4,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,0,0,6">
@@ -147,7 +147,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </Expander>
+                    </local:Disclosure>
                 </StackPanel>
                 </DockPanel>
             </Border>
