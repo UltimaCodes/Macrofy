@@ -1,21 +1,28 @@
-MIT License
+Copyright (c) 2026 UltimaCodes. All rights reserved.
 
-Copyright (c) 2026 Ryaan Aaqil
+Macrofy's source code is published so you can read it and check what the app does.
+Reading it is the only permission this notice gives you.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Without written permission from the copyright holder, you may not:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+  - copy, modify, translate or build on this code, in whole or in part;
+  - publish, distribute, sublicense, rent or sell it, or anything made from it;
+  - use it, or anything made from it, in another product or service.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+You may download, install and use the official Macrofy builds published at
+https://github.com/UltimaCodes/Macrofy/releases.
+
+GitHub's Terms of Service let other GitHub users view and fork public repositories.
+Forking this repository doesn't give you any of the rights listed above.
+
+Macrofy includes open-source components that keep their own licenses. Their notices
+are in THIRD-PARTY-NOTICES.md.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+To ask for permission, open an issue at https://github.com/UltimaCodes/Macrofy/issues.

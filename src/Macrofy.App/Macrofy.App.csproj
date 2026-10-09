@@ -21,6 +21,13 @@
     <None Include="..\..\native\MacrofyHook.dll" Link="MacrofyHook.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Macrofy's license and the notices the bundled open-source components require, so they
+       ship inside every install and the portable zip. -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Shown in the exe's Properties > Details, and weighed by SmartScreen/AV: a blank publisher
        reads as more suspicious. -->
   <PropertyGroup>
@@ -29,7 +36,7 @@
     <Company>Macrofy</Company>
     <Authors>Macrofy</Authors>
     <Description>Turn a spare keyboard into a macro pad on Windows.</Description>
-    <Copyright>Copyright © Macrofy</Copyright>
+    <Copyright>Copyright © 2026 UltimaCodes. All rights reserved.</Copyright>
     <Version>1.2.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>

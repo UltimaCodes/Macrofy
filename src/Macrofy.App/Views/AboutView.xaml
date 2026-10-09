@@ -178,7 +178,7 @@
 
                             <Border Grid.Row="4" Style="{StaticResource SpecRule}" />
                             <TextBlock Grid.Row="4" Text="Licence" Style="{StaticResource SpecLabel}" />
-                            <TextBlock Grid.Row="4" Grid.Column="1" Text="Open source (MIT)" Style="{StaticResource SpecValue}" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="Source is public, all rights reserved" Style="{StaticResource SpecValue}" />
 
                             <Border Grid.Row="5" Style="{StaticResource SpecRule}" />
                             <TextBlock Grid.Row="5" Text="Built with" Style="{StaticResource SpecLabel}" />

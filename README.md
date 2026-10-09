@@ -6,7 +6,7 @@ Think Stream Deck, except it's a whole keyboard, you probably already own one, a
 
 ![The Macrofy app with the OBS Studio profile on a captured keyboard, each key labelled with what it does](website/assets/img/app-keyboards.png)
 
-**[Download Macrofy-win-Setup.exe](https://github.com/UltimaCodes/Macrofy/releases/latest/download/Macrofy-win-Setup.exe)** for Windows 10 and 11. Latest version: 1.2.0 ([what's new](release-notes/1.2.0.md)).
+**[Download Macrofy-win-Setup.exe](https://github.com/UltimaCodes/Macrofy/releases/latest/download/Macrofy-win-Setup.exe)** for Windows 10 and 11. Latest version: 1.2.0 ([what's new](https://github.com/UltimaCodes/Macrofy/releases/latest)).
 
 ## Quick facts
 
@@ -16,7 +16,7 @@ Think Stream Deck, except it's a whole keyboard, you probably already own one, a
 | Works on | Windows 10 and 11, 64-bit |
 | Driver | None. Nothing gets installed into the Windows kernel |
 | Goes online | Only to check GitHub for updates, and you can turn that off |
-| Source | Open source, MIT licence |
+| Source | Public so you can see what it does. All rights reserved |
 
 ## What can Macrofy do?
 
@@ -108,6 +108,8 @@ Everything is in `%AppData%\Macrofy` on your PC: your profiles (`library\`), whi
 
 ## Building from source
 
+This is for working on Macrofy itself. The code isn't licensed for anyone else to build on (see [License](#license)).
+
 You need Windows and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```
@@ -122,13 +124,11 @@ What's where:
 - `src/Macrofy.Diag` is a console tool that lists keyboards and shows what capture is doing, for debugging.
 - `src/Macrofy.Tests` has the unit tests.
 - `native/` is the hook DLL. A prebuilt `MacrofyHook.dll` is committed. To rebuild it, install MinGW gcc (`winget install BrechtSanders.WinLibs.POSIX.UCRT`) and run `native/build.ps1`.
-- `website/` is the Macrofy website (see its own README).
-- `release-notes/` has the notes for each version.
 
 ## Releasing
 
-1. Write the notes in `release-notes/<version>.md`.
-2. Bump `<Version>` in `src/Macrofy.App/Macrofy.App.csproj`.
+1. Bump `<Version>` in `src/Macrofy.App/Macrofy.App.csproj`. Use all three parts, like `1.2.0`, because the installer tool rejects `1.2`.
+2. If you want notes inside the update, put them in `release-notes/<version>.md`. This is optional.
 3. Push a tag:
 
 ```
@@ -142,4 +142,6 @@ To build the installer on your own PC instead, run `dotnet tool install -g vpk` 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+All rights reserved. The code is public so you can see exactly what Macrofy does, but you can't copy it, change it or redistribute it without permission. Downloading and using the official builds is free.
+
+See [LICENSE](LICENSE) for the full terms, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the open-source parts Macrofy is built with.
